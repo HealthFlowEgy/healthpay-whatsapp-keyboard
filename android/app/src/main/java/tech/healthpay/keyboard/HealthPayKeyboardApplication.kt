@@ -11,17 +11,158 @@ import tech.healthpay.keyboard.security.AuthenticationManager
 import tech.healthpay.keyboard.security.BiometricHelper
 import tech.healthpay.keyboard.security.EncryptionManager
 import tech.healthpay.keyboard.security.TokenManager
-import tech.healthpay.keyboard.viewmodel.KeyboardSettingsRepository
-import tech.healthpay.keyboard.viewmodel.KeyboardSettingsRepositoryImpl
 
 /**
  * HealthPay Keyboard Application
  * 
- * NO HILT - Uses manual dependency injection via companion object singleton.
+ * Uses manual dependency injection via companion object singleton.
  * This approach avoids all Hilt compilation issues while maintaining
  * clean dependency management.
  */
 class HealthPayKeyboardApplication : Application() {
+
+    companion object {
+        private const val TAG = "HealthPayApp"
+        private const val PREFS_NAME = "healthpay_keyboard_prefs"
+        
+        // Preference Keys
+        private const val KEY_IS_LOGGED_IN = "is_logged_in"
+        private const val KEY_PHONE_NUMBER = "phone_number"
+        private const val KEY_COMPLETED_INITIAL_LOGIN = "completed_initial_login"
+        private const val KEY_BIOMETRIC_ENABLED = "biometric_enabled"
+
+        // Singleton instance
+        private lateinit var instance: HealthPayKeyboardApplication
+
+        // Dependencies (lazily initialized)
+        private var _sharedPreferences: SharedPreferences? = null
+        private var _encryptionManager: EncryptionManager? = null
+        private var _tokenManager: TokenManager? = null
+        private var _biometricHelper: BiometricHelper? = null
+        private var _apiClient: HealthPayApiClient? = null
+        private var _authManager: AuthenticationManager? = null
+
+        // ==================== DEPENDENCY ACCESSORS ====================
+
+        val sharedPreferences: SharedPreferences
+            get() = _sharedPreferences ?: throw IllegalStateException("SharedPreferences not initialized")
+
+        val encryptionManager: EncryptionManager
+            get() = _encryptionManager ?: throw IllegalStateException("EncryptionManager not initialized")
+
+        val tokenManager: TokenManager
+            get() = _tokenManager ?: throw IllegalStateException("TokenManager not initialized")
+
+        val biometricHelper: BiometricHelper
+            get() = _biometricHelper ?: throw IllegalStateException("BiometricHelper not initialized")
+
+        val apiClient: HealthPayApiClient
+            get() = _apiClient ?: throw IllegalStateException("HealthPayApiClient not initialized")
+
+        val authManager: AuthenticationManager
+            get() = _authManager ?: throw IllegalStateException("AuthenticationManager not initialized")
+
+        val context: Context
+            get() = instance.applicationContext
+
+        // ==================== LOGIN STATE MANAGEMENT ====================
+
+        /**
+         * Check if user is currently logged in with a valid session.
+         */
+        fun isLoggedIn(): Boolean {
+            return _sharedPreferences?.getBoolean(KEY_IS_LOGGED_IN, false) ?: false
+        }
+
+        /**
+         * Set the login state.
+         */
+        fun setLoggedIn(loggedIn: Boolean) {
+            _sharedPreferences?.edit()?.apply {
+                putBoolean(KEY_IS_LOGGED_IN, loggedIn)
+                if (loggedIn) {
+                    putBoolean(KEY_COMPLETED_INITIAL_LOGIN, true)
+                }
+                apply()
+            }
+            Log.d(TAG, "Login state set to: $loggedIn")
+        }
+
+        /**
+         * Check if user has ever completed the initial login (phone + OTP).
+         * Used to determine if we should show LoginActivity or BiometricAuthActivity.
+         */
+        fun hasCompletedInitialLogin(): Boolean {
+            return _sharedPreferences?.getBoolean(KEY_COMPLETED_INITIAL_LOGIN, false) ?: false
+        }
+
+        /**
+         * Get the stored phone number.
+         */
+        fun getPhoneNumber(): String? {
+            return _sharedPreferences?.getString(KEY_PHONE_NUMBER, null)
+        }
+
+        /**
+         * Save the user's phone number.
+         */
+        fun setPhoneNumber(phoneNumber: String) {
+            _sharedPreferences?.edit()?.apply {
+                putString(KEY_PHONE_NUMBER, phoneNumber)
+                apply()
+            }
+        }
+
+        /**
+         * Check if biometric authentication is enabled.
+         */
+        fun isBiometricEnabled(): Boolean {
+            return _sharedPreferences?.getBoolean(KEY_BIOMETRIC_ENABLED, false) ?: false
+        }
+
+        /**
+         * Enable or disable biometric authentication.
+         */
+        fun setBiometricEnabled(enabled: Boolean) {
+            _sharedPreferences?.edit()?.apply {
+                putBoolean(KEY_BIOMETRIC_ENABLED, enabled)
+                apply()
+            }
+        }
+
+        /**
+         * Perform logout - clear all session data but preserve phone number for re-login.
+         */
+        fun logout() {
+            Log.d(TAG, "Performing logout")
+            
+            // Clear tokens
+            _tokenManager?.clearTokens()
+            
+            // Update login state
+            _sharedPreferences?.edit()?.apply {
+                putBoolean(KEY_IS_LOGGED_IN, false)
+                // Keep phone number and completed_initial_login for easier re-authentication
+                apply()
+            }
+        }
+
+        /**
+         * Perform full logout - clear all data including phone number.
+         */
+        fun fullLogout() {
+            Log.d(TAG, "Performing full logout")
+            
+            // Clear tokens
+            _tokenManager?.clearTokens()
+            
+            // Clear all preferences
+            _sharedPreferences?.edit()?.apply {
+                clear()
+                apply()
+            }
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -32,7 +173,7 @@ class HealthPayKeyboardApplication : Application() {
 
     private fun initializeDependencies() {
         try {
-            // 1. Create encrypted SharedPreferences
+            // Initialize encrypted shared preferences
             val masterKey = MasterKey.Builder(this)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
                 .build()
@@ -44,169 +185,22 @@ class HealthPayKeyboardApplication : Application() {
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
-            Log.d(TAG, "EncryptedSharedPreferences created")
 
-            // 2. Create managers in correct dependency order
+            // Initialize managers in dependency order
             _encryptionManager = EncryptionManager(this)
             _tokenManager = TokenManager(this)
             _biometricHelper = BiometricHelper(this)
-            
-            // 3. Create API client (depends on TokenManager)
-            _apiClient = HealthPayApiClient(this, _tokenManager!!)
-            
-            // 4. Create AuthenticationManager (depends on TokenManager and ApiClient)
-            _authenticationManager = AuthenticationManager(
-                this,
-                _tokenManager!!,
-                _apiClient!!
+            _apiClient = HealthPayApiClient(_tokenManager!!)
+            _authManager = AuthenticationManager(
+                tokenManager = _tokenManager!!,
+                biometricHelper = _biometricHelper!!,
+                apiClient = _apiClient!!
             )
-            
-            // 5. Create settings repository
-            _keyboardSettingsRepository = KeyboardSettingsRepositoryImpl(_sharedPreferences!!)
-            
+
             Log.d(TAG, "All dependencies initialized successfully")
-            
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize dependencies", e)
-            // Fallback to non-encrypted preferences if encryption fails
-            _sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            initializeFallbackDependencies()
-        }
-    }
-
-    private fun initializeFallbackDependencies() {
-        _encryptionManager = EncryptionManager(this)
-        _tokenManager = TokenManager(this)
-        _biometricHelper = BiometricHelper(this)
-        _apiClient = HealthPayApiClient(this, _tokenManager!!)
-        _authenticationManager = AuthenticationManager(this, _tokenManager!!, _apiClient!!)
-        _keyboardSettingsRepository = KeyboardSettingsRepositoryImpl(_sharedPreferences!!)
-    }
-
-    companion object {
-        private const val TAG = "HealthPayApp"
-        private const val PREFS_NAME = "healthpay_secure_prefs"
-
-        @Volatile
-        private var instance: HealthPayKeyboardApplication? = null
-
-        // Dependency singletons
-        private var _sharedPreferences: SharedPreferences? = null
-        private var _encryptionManager: EncryptionManager? = null
-        private var _tokenManager: TokenManager? = null
-        private var _biometricHelper: BiometricHelper? = null
-        private var _apiClient: HealthPayApiClient? = null
-        private var _authenticationManager: AuthenticationManager? = null
-        private var _keyboardSettingsRepository: KeyboardSettingsRepository? = null
-
-        /**
-         * Get application instance
-         */
-        @JvmStatic
-        fun getInstance(): HealthPayKeyboardApplication {
-            return instance ?: throw IllegalStateException(
-                "HealthPayKeyboardApplication not initialized. " +
-                "Make sure the Application class is set in AndroidManifest.xml"
-            )
-        }
-
-        /**
-         * Get application context
-         */
-        @JvmStatic
-        fun getAppContext(): Context = getInstance().applicationContext
-
-        /**
-         * Encrypted SharedPreferences
-         */
-        @JvmStatic
-        val sharedPreferences: SharedPreferences
-            get() = _sharedPreferences ?: throw notInitialized("SharedPreferences")
-
-        /**
-         * Encryption manager for secure data storage
-         */
-        @JvmStatic
-        val encryptionManager: EncryptionManager
-            get() = _encryptionManager ?: throw notInitialized("EncryptionManager")
-
-        /**
-         * Token manager for authentication tokens
-         */
-        @JvmStatic
-        val tokenManager: TokenManager
-            get() = _tokenManager ?: throw notInitialized("TokenManager")
-
-        /**
-         * Biometric authentication helper
-         */
-        @JvmStatic
-        val biometricHelper: BiometricHelper
-            get() = _biometricHelper ?: throw notInitialized("BiometricHelper")
-
-        /**
-         * HealthPay API client
-         */
-        @JvmStatic
-        val apiClient: HealthPayApiClient
-            get() = _apiClient ?: throw notInitialized("HealthPayApiClient")
-
-        /**
-         * Authentication manager
-         * Note: This is also available as 'authManager' for compatibility
-         */
-        @JvmStatic
-        val authenticationManager: AuthenticationManager
-            get() = _authenticationManager ?: throw notInitialized("AuthenticationManager")
-
-        /**
-         * Alias for authenticationManager (for code that uses AuthManager)
-         */
-        @JvmStatic
-        val authManager: AuthenticationManager
-            get() = authenticationManager
-
-        /**
-         * Keyboard settings repository
-         */
-        @JvmStatic
-        val keyboardSettingsRepository: KeyboardSettingsRepository
-            get() = _keyboardSettingsRepository ?: throw notInitialized("KeyboardSettingsRepository")
-
-        /**
-         * Check if user is logged in
-         */
-        @JvmStatic
-        fun isLoggedIn(): Boolean {
-            return try {
-                tokenManager.hasValidToken()
-            } catch (e: Exception) {
-                false
-            }
-        }
-
-        /**
-         * Log out user
-         */
-        @JvmStatic
-        fun logout() {
-            try {
-                tokenManager.clearTokens()
-                apiClient.clearAuth()
-            } catch (e: Exception) {
-                Log.e(TAG, "Error during logout", e)
-            }
-        }
-
-        private fun notInitialized(name: String): IllegalStateException {
-            return IllegalStateException(
-                "$name not initialized. Ensure HealthPayKeyboardApplication.onCreate() has been called."
-            )
+            Log.e(TAG, "Error initializing dependencies", e)
+            throw RuntimeException("Failed to initialize HealthPay dependencies", e)
         }
     }
 }
-
-/**
- * Type alias for backward compatibility with code that references AuthManager
- */
-typealias AuthManager = AuthenticationManager

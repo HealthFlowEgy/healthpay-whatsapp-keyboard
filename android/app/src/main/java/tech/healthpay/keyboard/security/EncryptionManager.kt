@@ -12,68 +12,76 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 /**
- * Encryption Manager - Handles data encryption using Android Keystore
- * 
- * Uses AES-256-GCM for encryption with hardware-backed key storage
- * 
- * NO HILT - Instantiated manually in Application class
+ * EncryptionManager handles encryption/decryption of sensitive data
+ * using Android Keystore.
  */
 class EncryptionManager(private val context: Context) {
 
-    private val keyStore: KeyStore by lazy {
-        KeyStore.getInstance(ANDROID_KEYSTORE).apply {
-            load(null)
-        }
+    companion object {
+        private const val TAG = "EncryptionManager"
+        private const val ANDROID_KEYSTORE = "AndroidKeyStore"
+        private const val KEY_ALIAS = "HealthPayKeyboardKey"
+        private const val TRANSFORMATION = "AES/GCM/NoPadding"
+        private const val GCM_TAG_LENGTH = 128
+    }
+
+    private val keyStore: KeyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply {
+        load(null)
     }
 
     init {
-        createKeyIfNeeded()
-    }
-
-    private fun createKeyIfNeeded() {
-        try {
-            if (!keyStore.containsAlias(KEY_ALIAS)) {
-                val keyGenerator = KeyGenerator.getInstance(
-                    KeyProperties.KEY_ALGORITHM_AES,
-                    ANDROID_KEYSTORE
-                )
-
-                val keySpec = KeyGenParameterSpec.Builder(
-                    KEY_ALIAS,
-                    KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
-                )
-                    .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                    .setKeySize(256)
-                    .setRandomizedEncryptionRequired(true)
-                    .build()
-
-                keyGenerator.init(keySpec)
-                keyGenerator.generateKey()
-                Log.d(TAG, "Encryption key created")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to create encryption key", e)
+        if (!keyStore.containsAlias(KEY_ALIAS)) {
+            generateKey()
         }
     }
 
+    /**
+     * Generate a new encryption key.
+     */
+    private fun generateKey() {
+        try {
+            val keyGenerator = KeyGenerator.getInstance(
+                KeyProperties.KEY_ALGORITHM_AES,
+                ANDROID_KEYSTORE
+            )
+
+            val keyGenParameterSpec = KeyGenParameterSpec.Builder(
+                KEY_ALIAS,
+                KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+            )
+                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                .setKeySize(256)
+                .build()
+
+            keyGenerator.init(keyGenParameterSpec)
+            keyGenerator.generateKey()
+            Log.d(TAG, "Encryption key generated")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error generating key", e)
+        }
+    }
+
+    /**
+     * Get the secret key from keystore.
+     */
     private fun getSecretKey(): SecretKey? {
         return try {
-            keyStore.getKey(KEY_ALIAS, null) as? SecretKey
+            val entry = keyStore.getEntry(KEY_ALIAS, null) as? KeyStore.SecretKeyEntry
+            entry?.secretKey
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to get secret key", e)
+            Log.e(TAG, "Error getting secret key", e)
             null
         }
     }
 
     /**
-     * Encrypt plaintext data
-     * @return Base64 encoded encrypted data (IV + ciphertext) or null on failure
+     * Encrypt a string value.
+     * Returns Base64 encoded string containing IV + encrypted data.
      */
     fun encrypt(plainText: String): String? {
         return try {
             val secretKey = getSecretKey() ?: return null
-
             val cipher = Cipher.getInstance(TRANSFORMATION)
             cipher.init(Cipher.ENCRYPT_MODE, secretKey)
 
@@ -87,63 +95,47 @@ class EncryptionManager(private val context: Context) {
 
             Base64.encodeToString(combined, Base64.NO_WRAP)
         } catch (e: Exception) {
-            Log.e(TAG, "Encryption failed", e)
+            Log.e(TAG, "Encryption error", e)
             null
         }
     }
 
     /**
-     * Decrypt encrypted data
-     * @param encryptedData Base64 encoded encrypted data (IV + ciphertext)
-     * @return Decrypted plaintext or null on failure
+     * Decrypt a string value.
+     * Expects Base64 encoded string containing IV + encrypted data.
      */
-    fun decrypt(encryptedData: String): String? {
+    fun decrypt(encryptedText: String): String? {
         return try {
             val secretKey = getSecretKey() ?: return null
-
-            val combined = Base64.decode(encryptedData, Base64.NO_WRAP)
+            val combined = Base64.decode(encryptedText, Base64.NO_WRAP)
 
             // Extract IV (first 12 bytes for GCM)
-            val iv = combined.copyOfRange(0, GCM_IV_LENGTH)
-            val encryptedBytes = combined.copyOfRange(GCM_IV_LENGTH, combined.size)
+            val iv = combined.copyOfRange(0, 12)
+            val encryptedBytes = combined.copyOfRange(12, combined.size)
 
             val cipher = Cipher.getInstance(TRANSFORMATION)
-            val spec = GCMParameterSpec(GCM_TAG_LENGTH * 8, iv)
+            val spec = GCMParameterSpec(GCM_TAG_LENGTH, iv)
             cipher.init(Cipher.DECRYPT_MODE, secretKey, spec)
 
             val decryptedBytes = cipher.doFinal(encryptedBytes)
             String(decryptedBytes, Charsets.UTF_8)
         } catch (e: Exception) {
-            Log.e(TAG, "Decryption failed", e)
+            Log.e(TAG, "Decryption error", e)
             null
         }
     }
 
     /**
-     * Check if encryption is available
-     */
-    fun isEncryptionAvailable(): Boolean {
-        return getSecretKey() != null
-    }
-
-    /**
-     * Delete the encryption key (WARNING: encrypted data will be unrecoverable)
+     * Delete the encryption key.
      */
     fun deleteKey() {
         try {
-            keyStore.deleteEntry(KEY_ALIAS)
-            Log.d(TAG, "Encryption key deleted")
+            if (keyStore.containsAlias(KEY_ALIAS)) {
+                keyStore.deleteEntry(KEY_ALIAS)
+                Log.d(TAG, "Encryption key deleted")
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to delete key", e)
+            Log.e(TAG, "Error deleting key", e)
         }
-    }
-
-    companion object {
-        private const val TAG = "EncryptionManager"
-        private const val ANDROID_KEYSTORE = "AndroidKeyStore"
-        private const val KEY_ALIAS = "healthpay_encryption_key"
-        private const val TRANSFORMATION = "AES/GCM/NoPadding"
-        private const val GCM_IV_LENGTH = 12
-        private const val GCM_TAG_LENGTH = 16
     }
 }

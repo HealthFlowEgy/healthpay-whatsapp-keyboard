@@ -1,46 +1,62 @@
 package tech.healthpay.keyboard.model
 
 /**
- * Data class representing keyboard settings
+ * Response from OTP request API.
  */
-data class KeyboardSettings(
-    val biometricEnabled: Boolean = true,
-    val soundEnabled: Boolean = true,
-    val vibrationEnabled: Boolean = true,
-    val showBalance: Boolean = true,
-    val language: String = "en"
-) {
-    companion object {
-        val DEFAULT = KeyboardSettings()
-    }
+data class OtpRequestResponse(
+    val requestId: String,
+    val expiresIn: Int,
+    val message: String
+)
+
+/**
+ * Response from OTP verification API.
+ */
+data class OtpVerifyResponse(
+    val accessToken: String,
+    val refreshToken: String?,
+    val expiresIn: Int,
+    val userId: String?
+)
+
+/**
+ * Wallet balance information.
+ */
+data class WalletBalance(
+    val available: Double,
+    val pending: Double,
+    val currency: String
+)
+
+/**
+ * Transaction details.
+ */
+data class Transaction(
+    val id: String,
+    val type: TransactionType,
+    val amount: Double,
+    val currency: String,
+    val status: TransactionStatus,
+    val recipientPhone: String?,
+    val senderPhone: String?,
+    val note: String?,
+    val reference: String?,
+    val createdAt: Long
+)
+
+/**
+ * Transaction types.
+ */
+enum class TransactionType {
+    SEND,
+    RECEIVE,
+    TOP_UP,
+    WITHDRAW,
+    PAYMENT
 }
 
 /**
- * Data class for wallet balance response
- */
-data class WalletBalance(
-    val balance: Double,
-    val currency: String,
-    val formattedBalance: String
-)
-
-/**
- * Data class for payment transaction
- */
-data class PaymentTransaction(
-    val id: String,
-    val amount: Double,
-    val currency: String,
-    val recipient: String?,
-    val sender: String?,
-    val status: TransactionStatus,
-    val type: TransactionType,
-    val timestamp: Long,
-    val note: String?
-)
-
-/**
- * Transaction status enum
+ * Transaction status.
  */
 enum class TransactionStatus {
     PENDING,
@@ -48,35 +64,3 @@ enum class TransactionStatus {
     FAILED,
     CANCELLED
 }
-
-/**
- * Transaction type enum
- */
-enum class TransactionType {
-    SEND,
-    RECEIVE,
-    REQUEST
-}
-
-/**
- * Data class for payment request
- */
-data class PaymentRequest(
-    val requestId: String,
-    val amount: Double,
-    val currency: String,
-    val paymentLink: String?,
-    val qrCodeData: String?,
-    val expiresAt: Long?
-)
-
-/**
- * User profile data
- */
-data class UserProfile(
-    val userId: String,
-    val phoneNumber: String,
-    val displayName: String?,
-    val email: String?,
-    val isVerified: Boolean
-)

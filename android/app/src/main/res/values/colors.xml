@@ -1,29 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="primary">#1976D2</color>
-    <color name="primary_dark">#1565C0</color>
-    <color name="primary_light">#42A5F5</color>
-    <color name="accent">#00BCD4</color>
-    
-    <color name="background">#FAFAFA</color>
-    <color name="surface">#FFFFFF</color>
+
+    <!-- HealthPay Brand Colors -->
+    <color name="healthpay_primary">#1A8A8A</color>
+    <color name="healthpay_primary_dark">#147070</color>
+    <color name="healthpay_primary_light">#4DB6B6</color>
+    <color name="healthpay_secondary">#FF6B35</color>
+    <color name="healthpay_secondary_dark">#E5552A</color>
+
+    <!-- Background Colors -->
+    <color name="background_primary">#FFFFFF</color>
+    <color name="background_secondary">#F5F5F5</color>
+    <color name="keyboard_background">#ECEFF1</color>
+    <color name="suggestions_background">#E0E0E0</color>
+    <color name="healthpay_panel_background">#E8F5F5</color>
+
+    <!-- Text Colors -->
     <color name="text_primary">#212121</color>
     <color name="text_secondary">#757575</color>
-    <color name="text_hint">#9E9E9E</color>
-    <color name="divider">#E0E0E0</color>
-    
-    <color name="status_success">#4CAF50</color>
-    <color name="status_warning">#FF9800</color>
-    <color name="status_error">#F44336</color>
-    
-    <color name="keyboard_background">#ECEFF1</color>
-    <color name="key_background">#FFFFFF</color>
-    <color name="key_background_pressed">#E0E0E0</color>
-    <color name="key_text">#212121</color>
-    <color name="key_special_background">#CFD8DC</color>
-    <color name="panel_background">#FFFFFF</color>
-    <color name="action_button_icon">#1976D2</color>
-    
+    <color name="text_hint">#BDBDBD</color>
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
+
+    <!-- Keyboard Key Colors -->
+    <color name="key_background">#FFFFFF</color>
+    <color name="key_background_pressed">#E0E0E0</color>
+    <color name="key_background_special">#CFD8DC</color>
+    <color name="key_background_special_pressed">#B0BEC5</color>
+    <color name="key_background_action">#1A8A8A</color>
+    <color name="key_background_action_pressed">#147070</color>
+    <color name="key_background_active">#B2DFDB</color>
+    <color name="key_text_primary">#212121</color>
+    <color name="key_text_secondary">#546E7A</color>
+    <color name="key_shadow">#40000000</color>
+
+    <!-- Status Colors -->
+    <color name="success">#4CAF50</color>
+    <color name="warning">#FF9800</color>
+    <color name="error">#F44336</color>
+    <color name="info">#2196F3</color>
+
+    <!-- Divider -->
+    <color name="divider">#E0E0E0</color>
+
+    <!-- OTP Input -->
+    <color name="otp_border">#BDBDBD</color>
+    <color name="otp_border_focused">#1A8A8A</color>
+
 </resources>

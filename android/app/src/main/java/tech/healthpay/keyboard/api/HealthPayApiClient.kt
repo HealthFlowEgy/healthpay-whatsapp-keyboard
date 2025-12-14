@@ -1,379 +1,355 @@
 package tech.healthpay.keyboard.api
 
-import android.content.Context
 import android.util.Log
-import com.google.gson.Gson
-import com.google.gson.GsonBuilder
-import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.logging.HttpLoggingInterceptor
-import tech.healthpay.keyboard.model.PaymentRequest
-import tech.healthpay.keyboard.model.PaymentTransaction
-import tech.healthpay.keyboard.model.TransactionStatus
-import tech.healthpay.keyboard.model.TransactionType
+import org.json.JSONObject
+import tech.healthpay.keyboard.model.OtpRequestResponse
+import tech.healthpay.keyboard.model.OtpVerifyResponse
 import tech.healthpay.keyboard.model.WalletBalance
 import tech.healthpay.keyboard.security.TokenManager
-import java.util.concurrent.TimeUnit
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.OutputStreamWriter
+import java.net.HttpURLConnection
+import java.net.URL
 
 /**
  * HealthPay API Client
  * 
- * Handles all HTTP communication with the HealthPay backend.
- * 
- * NO HILT - Instantiated manually in Application class
+ * Handles all API communication with the HealthPay backend.
  */
 class HealthPayApiClient(
-    private val context: Context,
     private val tokenManager: TokenManager
 ) {
-
-    private val gson: Gson = GsonBuilder()
-        .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
-        .create()
-
-    private val client: OkHttpClient by lazy {
-        val logging = HttpLoggingInterceptor { message ->
-            Log.d(TAG, message)
-        }.apply {
-            level = HttpLoggingInterceptor.Level.BODY
-        }
-
-        OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
-            .addInterceptor(logging)
-            .addInterceptor { chain ->
-                val original = chain.request()
-                val token = tokenManager.getAccessToken()
-
-                val request = original.newBuilder()
-                    .header("Content-Type", "application/json")
-                    .header("Accept", "application/json")
-                    .apply {
-                        if (!token.isNullOrBlank()) {
-                            header("Authorization", "Bearer $token")
-                        }
-                    }
-                    .build()
-
-                chain.proceed(request)
-            }
-            .build()
-    }
-
-    // ==================== Authentication APIs ====================
-
-    /**
-     * Request OTP for phone number
-     */
-    suspend fun requestOtp(phoneNumber: String): OtpResponse {
-        return withContext(Dispatchers.IO) {
-            try {
-                val body = mapOf("phone" to phoneNumber)
-                val response = post<OtpResponse>("$BASE_URL/auth/request-otp", body)
-                response ?: OtpResponse(success = false, message = "Request failed")
-            } catch (e: Exception) {
-                Log.e(TAG, "requestOtp failed", e)
-                OtpResponse(success = false, message = e.message)
-            }
-        }
-    }
-
-    /**
-     * Verify OTP and get tokens
-     */
-    suspend fun verifyOtp(phoneNumber: String, otp: String): AuthResponse {
-        return withContext(Dispatchers.IO) {
-            try {
-                val body = mapOf("phone" to phoneNumber, "otp" to otp)
-                val response = post<AuthResponse>("$BASE_URL/auth/verify-otp", body)
-                response ?: AuthResponse(success = false, message = "Verification failed")
-            } catch (e: Exception) {
-                Log.e(TAG, "verifyOtp failed", e)
-                AuthResponse(success = false, message = e.message)
-            }
-        }
-    }
-
-    /**
-     * Refresh access token
-     */
-    suspend fun refreshToken(refreshToken: String): AuthResponse {
-        return withContext(Dispatchers.IO) {
-            try {
-                val body = mapOf("refresh_token" to refreshToken)
-                val response = post<AuthResponse>("$BASE_URL/auth/refresh", body)
-                response ?: AuthResponse(success = false, message = "Refresh failed")
-            } catch (e: Exception) {
-                Log.e(TAG, "refreshToken failed", e)
-                AuthResponse(success = false, message = e.message)
-            }
-        }
-    }
-
-    // ==================== Wallet APIs ====================
-
-    /**
-     * Get wallet balance
-     */
-    suspend fun getWalletBalance(): WalletBalanceResponse {
-        return withContext(Dispatchers.IO) {
-            try {
-                val response = get<WalletBalanceResponse>("$BASE_URL/wallet/balance")
-                response ?: WalletBalanceResponse(success = false, message = "Failed to get balance")
-            } catch (e: Exception) {
-                Log.e(TAG, "getWalletBalance failed", e)
-                WalletBalanceResponse(success = false, message = e.message)
-            }
-        }
-    }
-
-    /**
-     * Send payment
-     */
-    suspend fun sendPayment(
-        amount: Double,
-        recipient: String,
-        currency: String = "EGP",
-        note: String? = null
-    ): PaymentResponse {
-        return withContext(Dispatchers.IO) {
-            try {
-                val body = mutableMapOf<String, Any>(
-                    "amount" to amount,
-                    "recipient" to recipient,
-                    "currency" to currency
-                )
-                note?.let { body["note"] = it }
-
-                val response = post<PaymentResponse>("$BASE_URL/wallet/send", body)
-                response ?: PaymentResponse(success = false, message = "Payment failed")
-            } catch (e: Exception) {
-                Log.e(TAG, "sendPayment failed", e)
-                PaymentResponse(success = false, message = e.message)
-            }
-        }
-    }
-
-    /**
-     * Create payment request
-     */
-    suspend fun requestPayment(
-        amount: Double,
-        currency: String = "EGP",
-        note: String? = null
-    ): PaymentRequestResponse {
-        return withContext(Dispatchers.IO) {
-            try {
-                val body = mutableMapOf<String, Any>(
-                    "amount" to amount,
-                    "currency" to currency
-                )
-                note?.let { body["note"] = it }
-
-                val response = post<PaymentRequestResponse>("$BASE_URL/wallet/request", body)
-                response ?: PaymentRequestResponse(success = false, message = "Request failed")
-            } catch (e: Exception) {
-                Log.e(TAG, "requestPayment failed", e)
-                PaymentRequestResponse(success = false, message = e.message)
-            }
-        }
-    }
-
-    /**
-     * Get transaction history
-     */
-    suspend fun getTransactionHistory(
-        page: Int = 1,
-        limit: Int = 20
-    ): TransactionHistoryResponse {
-        return withContext(Dispatchers.IO) {
-            try {
-                val response = get<TransactionHistoryResponse>(
-                    "$BASE_URL/wallet/transactions?page=$page&limit=$limit"
-                )
-                response ?: TransactionHistoryResponse(success = false, message = "Failed to get history")
-            } catch (e: Exception) {
-                Log.e(TAG, "getTransactionHistory failed", e)
-                TransactionHistoryResponse(success = false, message = e.message)
-            }
-        }
-    }
-
-    // ==================== Helper Methods ====================
-
-    private inline fun <reified T> get(url: String): T? {
-        val request = Request.Builder()
-            .url(url)
-            .get()
-            .build()
-
-        val response = client.newCall(request).execute()
-        val body = response.body?.string()
-
-        return if (response.isSuccessful && body != null) {
-            gson.fromJson(body, T::class.java)
-        } else {
-            null
-        }
-    }
-
-    private inline fun <reified T> post(url: String, body: Any): T? {
-        val jsonBody = gson.toJson(body).toRequestBody(JSON_MEDIA_TYPE)
-
-        val request = Request.Builder()
-            .url(url)
-            .post(jsonBody)
-            .build()
-
-        val response = client.newCall(request).execute()
-        val responseBody = response.body?.string()
-
-        return if (response.isSuccessful && responseBody != null) {
-            gson.fromJson(responseBody, T::class.java)
-        } else {
-            null
-        }
-    }
-
-    /**
-     * Clear authentication state
-     */
-    fun clearAuth() {
-        // Nothing to clear in the client itself
-        // TokenManager handles token storage
-    }
-
     companion object {
         private const val TAG = "HealthPayApiClient"
-        private const val BASE_URL = "https://portal.beta.healthpay.tech/api/v1"
-        private val JSON_MEDIA_TYPE = "application/json".toMediaType()
+        
+        // API Base URLs
+        private const val BASE_URL = "https://api.beta.healthpay.tech"
+        private const val GRAPHQL_URL = "https://sword.beta.healthpay.tech/graphql"
+        
+        // Endpoints
+        private const val ENDPOINT_REQUEST_OTP = "/auth/otp/request"
+        private const val ENDPOINT_VERIFY_OTP = "/auth/otp/verify"
+        private const val ENDPOINT_WALLET_BALANCE = "/wallet/balance"
+        private const val ENDPOINT_SEND_MONEY = "/wallet/send"
+        private const val ENDPOINT_REQUEST_MONEY = "/wallet/request"
+        
+        // Timeouts
+        private const val CONNECT_TIMEOUT = 30000
+        private const val READ_TIMEOUT = 30000
     }
 
-    // ==================== Response Data Classes ====================
+    /**
+     * Request OTP for phone number verification.
+     */
+    suspend fun requestOtp(phoneNumber: String): Result<OtpRequestResponse> = withContext(Dispatchers.IO) {
+        try {
+            val url = URL("$BASE_URL$ENDPOINT_REQUEST_OTP")
+            val connection = url.openConnection() as HttpURLConnection
+            
+            connection.apply {
+                requestMethod = "POST"
+                connectTimeout = CONNECT_TIMEOUT
+                readTimeout = READ_TIMEOUT
+                setRequestProperty("Content-Type", "application/json")
+                doOutput = true
+            }
 
-    data class OtpResponse(
-        val success: Boolean,
-        val message: String? = null
-    )
+            val requestBody = JSONObject().apply {
+                put("phone", normalizePhoneNumber(phoneNumber))
+                put("country_code", "+20")
+            }
 
-    data class AuthResponse(
-        val success: Boolean,
-        val message: String? = null,
-        @SerializedName("access_token")
-        val accessToken: String? = null,
-        @SerializedName("refresh_token")
-        val refreshToken: String? = null,
-        @SerializedName("expires_in")
-        val expiresIn: Long? = null,
-        @SerializedName("user_id")
-        val userId: String? = null
-    )
+            OutputStreamWriter(connection.outputStream).use { writer ->
+                writer.write(requestBody.toString())
+                writer.flush()
+            }
 
-    data class WalletBalanceResponse(
-        val success: Boolean,
-        val message: String? = null,
-        val balance: Double? = null,
-        val currency: String? = null,
-        @SerializedName("formatted_balance")
-        val formattedBalance: String? = null
-    ) {
-        fun toWalletBalance(): WalletBalance? {
-            return if (balance != null && currency != null) {
-                WalletBalance(
-                    balance = balance,
-                    currency = currency,
-                    formattedBalance = formattedBalance ?: "$currency $balance"
-                )
-            } else null
+            val responseCode = connection.responseCode
+            Log.d(TAG, "requestOtp response code: $responseCode")
+
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                val response = readResponse(connection)
+                val json = JSONObject(response)
+                
+                Result.success(OtpRequestResponse(
+                    requestId = json.getString("request_id"),
+                    expiresIn = json.optInt("expires_in", 300),
+                    message = json.optString("message", "OTP sent successfully")
+                ))
+            } else {
+                val error = readErrorResponse(connection)
+                Result.failure(Exception("Failed to send OTP: $error"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error requesting OTP", e)
+            Result.failure(e)
         }
     }
 
-    data class PaymentResponse(
-        val success: Boolean,
-        val message: String? = null,
-        @SerializedName("transaction_id")
-        val transactionId: String? = null,
-        val amount: Double? = null,
-        val currency: String? = null,
-        val status: String? = null
-    )
+    /**
+     * Verify OTP and get access token.
+     */
+    suspend fun verifyOtp(
+        phoneNumber: String,
+        otpCode: String,
+        requestId: String
+    ): Result<OtpVerifyResponse> = withContext(Dispatchers.IO) {
+        try {
+            val url = URL("$BASE_URL$ENDPOINT_VERIFY_OTP")
+            val connection = url.openConnection() as HttpURLConnection
+            
+            connection.apply {
+                requestMethod = "POST"
+                connectTimeout = CONNECT_TIMEOUT
+                readTimeout = READ_TIMEOUT
+                setRequestProperty("Content-Type", "application/json")
+                doOutput = true
+            }
 
-    data class PaymentRequestResponse(
-        val success: Boolean,
-        val message: String? = null,
-        @SerializedName("request_id")
-        val requestId: String? = null,
-        @SerializedName("payment_link")
-        val paymentLink: String? = null,
-        @SerializedName("qr_code")
-        val qrCode: String? = null,
-        val amount: Double? = null,
-        val currency: String? = null
-    ) {
-        fun toPaymentRequest(): PaymentRequest? {
-            return if (requestId != null && amount != null && currency != null) {
-                PaymentRequest(
-                    requestId = requestId,
-                    amount = amount,
-                    currency = currency,
-                    paymentLink = paymentLink,
-                    qrCodeData = qrCode,
-                    expiresAt = null
-                )
-            } else null
+            val requestBody = JSONObject().apply {
+                put("phone", normalizePhoneNumber(phoneNumber))
+                put("otp", otpCode)
+                put("request_id", requestId)
+            }
+
+            OutputStreamWriter(connection.outputStream).use { writer ->
+                writer.write(requestBody.toString())
+                writer.flush()
+            }
+
+            val responseCode = connection.responseCode
+            Log.d(TAG, "verifyOtp response code: $responseCode")
+
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                val response = readResponse(connection)
+                val json = JSONObject(response)
+                
+                Result.success(OtpVerifyResponse(
+                    accessToken = json.getString("access_token"),
+                    refreshToken = json.optString("refresh_token", null),
+                    expiresIn = json.optInt("expires_in", 3600),
+                    userId = json.optString("user_id", null)
+                ))
+            } else {
+                val error = readErrorResponse(connection)
+                Result.failure(Exception("OTP verification failed: $error"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error verifying OTP", e)
+            Result.failure(e)
         }
     }
 
-    data class TransactionHistoryResponse(
-        val success: Boolean,
-        val message: String? = null,
-        val transactions: List<TransactionDto>? = null,
-        val page: Int? = null,
-        @SerializedName("total_pages")
-        val totalPages: Int? = null
-    )
+    /**
+     * Get wallet balance.
+     */
+    suspend fun getWalletBalance(): Result<WalletBalance> = withContext(Dispatchers.IO) {
+        try {
+            val token = tokenManager.getAccessToken()
+            if (token == null) {
+                return@withContext Result.failure(Exception("Not authenticated"))
+            }
 
-    data class TransactionDto(
-        val id: String,
+            val url = URL("$BASE_URL$ENDPOINT_WALLET_BALANCE")
+            val connection = url.openConnection() as HttpURLConnection
+            
+            connection.apply {
+                requestMethod = "GET"
+                connectTimeout = CONNECT_TIMEOUT
+                readTimeout = READ_TIMEOUT
+                setRequestProperty("Authorization", "Bearer $token")
+                setRequestProperty("Content-Type", "application/json")
+            }
+
+            val responseCode = connection.responseCode
+            Log.d(TAG, "getWalletBalance response code: $responseCode")
+
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                val response = readResponse(connection)
+                val json = JSONObject(response)
+                
+                Result.success(WalletBalance(
+                    available = json.getDouble("available"),
+                    pending = json.optDouble("pending", 0.0),
+                    currency = json.optString("currency", "EGP")
+                ))
+            } else if (responseCode == HttpURLConnection.HTTP_UNAUTHORIZED) {
+                // Token expired - try to refresh
+                val refreshed = refreshToken()
+                if (refreshed) {
+                    // Retry the request
+                    return@withContext getWalletBalance()
+                }
+                Result.failure(Exception("Session expired. Please login again."))
+            } else {
+                val error = readErrorResponse(connection)
+                Result.failure(Exception("Failed to get balance: $error"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting wallet balance", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Send money to a phone number.
+     */
+    suspend fun sendMoney(
+        recipientPhone: String,
+        amount: Double,
+        note: String? = null
+    ): Result<TransactionResponse> = withContext(Dispatchers.IO) {
+        try {
+            val token = tokenManager.getAccessToken()
+            if (token == null) {
+                return@withContext Result.failure(Exception("Not authenticated"))
+            }
+
+            val url = URL("$BASE_URL$ENDPOINT_SEND_MONEY")
+            val connection = url.openConnection() as HttpURLConnection
+            
+            connection.apply {
+                requestMethod = "POST"
+                connectTimeout = CONNECT_TIMEOUT
+                readTimeout = READ_TIMEOUT
+                setRequestProperty("Authorization", "Bearer $token")
+                setRequestProperty("Content-Type", "application/json")
+                doOutput = true
+            }
+
+            val requestBody = JSONObject().apply {
+                put("recipient_phone", normalizePhoneNumber(recipientPhone))
+                put("amount", amount)
+                put("currency", "EGP")
+                if (!note.isNullOrBlank()) {
+                    put("note", note)
+                }
+            }
+
+            OutputStreamWriter(connection.outputStream).use { writer ->
+                writer.write(requestBody.toString())
+                writer.flush()
+            }
+
+            val responseCode = connection.responseCode
+            Log.d(TAG, "sendMoney response code: $responseCode")
+
+            if (responseCode == HttpURLConnection.HTTP_OK || responseCode == HttpURLConnection.HTTP_CREATED) {
+                val response = readResponse(connection)
+                val json = JSONObject(response)
+                
+                Result.success(TransactionResponse(
+                    transactionId = json.getString("transaction_id"),
+                    status = json.getString("status"),
+                    amount = json.getDouble("amount"),
+                    currency = json.optString("currency", "EGP"),
+                    reference = json.optString("reference", null)
+                ))
+            } else {
+                val error = readErrorResponse(connection)
+                Result.failure(Exception("Transfer failed: $error"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error sending money", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Refresh access token using refresh token.
+     */
+    private suspend fun refreshToken(): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val refreshToken = tokenManager.getRefreshToken()
+            if (refreshToken == null) {
+                return@withContext false
+            }
+
+            val url = URL("$BASE_URL/auth/refresh")
+            val connection = url.openConnection() as HttpURLConnection
+            
+            connection.apply {
+                requestMethod = "POST"
+                connectTimeout = CONNECT_TIMEOUT
+                readTimeout = READ_TIMEOUT
+                setRequestProperty("Content-Type", "application/json")
+                doOutput = true
+            }
+
+            val requestBody = JSONObject().apply {
+                put("refresh_token", refreshToken)
+            }
+
+            OutputStreamWriter(connection.outputStream).use { writer ->
+                writer.write(requestBody.toString())
+                writer.flush()
+            }
+
+            val responseCode = connection.responseCode
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                val response = readResponse(connection)
+                val json = JSONObject(response)
+                
+                tokenManager.saveAccessToken(json.getString("access_token"))
+                json.optString("refresh_token", null)?.let {
+                    tokenManager.saveRefreshToken(it)
+                }
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error refreshing token", e)
+            false
+        }
+    }
+
+    private fun normalizePhoneNumber(phone: String): String {
+        var normalized = phone.replace(Regex("[^0-9+]"), "")
+        
+        // Convert Egyptian numbers to international format
+        if (normalized.startsWith("01")) {
+            normalized = "+20" + normalized.substring(1)
+        } else if (normalized.startsWith("1") && normalized.length == 10) {
+            normalized = "+20$normalized"
+        }
+        
+        return normalized
+    }
+
+    private fun readResponse(connection: HttpURLConnection): String {
+        return BufferedReader(InputStreamReader(connection.inputStream)).use { reader ->
+            reader.readText()
+        }
+    }
+
+    private fun readErrorResponse(connection: HttpURLConnection): String {
+        return try {
+            BufferedReader(InputStreamReader(connection.errorStream)).use { reader ->
+                val response = reader.readText()
+                try {
+                    val json = JSONObject(response)
+                    json.optString("message", json.optString("error", response))
+                } catch (e: Exception) {
+                    response
+                }
+            }
+        } catch (e: Exception) {
+            "Unknown error"
+        }
+    }
+
+    /**
+     * Transaction response data class.
+     */
+    data class TransactionResponse(
+        val transactionId: String,
+        val status: String,
         val amount: Double,
         val currency: String,
-        val recipient: String?,
-        val sender: String?,
-        val status: String,
-        val type: String,
-        val timestamp: Long,
-        val note: String?
-    ) {
-        fun toPaymentTransaction(): PaymentTransaction {
-            return PaymentTransaction(
-                id = id,
-                amount = amount,
-                currency = currency,
-                recipient = recipient,
-                sender = sender,
-                status = when (status.uppercase()) {
-                    "COMPLETED" -> TransactionStatus.COMPLETED
-                    "PENDING" -> TransactionStatus.PENDING
-                    "FAILED" -> TransactionStatus.FAILED
-                    "CANCELLED" -> TransactionStatus.CANCELLED
-                    else -> TransactionStatus.PENDING
-                },
-                type = when (type.uppercase()) {
-                    "SEND" -> TransactionType.SEND
-                    "RECEIVE" -> TransactionType.RECEIVE
-                    "REQUEST" -> TransactionType.REQUEST
-                    else -> TransactionType.SEND
-                },
-                timestamp = timestamp,
-                note = note
-            )
-        }
-    }
+        val reference: String?
+    )
 }
