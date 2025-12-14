@@ -1,351 +1,379 @@
 package tech.healthpay.keyboard.api
 
 import android.content.Context
+import android.util.Log
+import com.google.gson.Gson
+import com.google.gson.GsonBuilder
+import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.Interceptor
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.logging.HttpLoggingInterceptor
-import retrofit2.Response
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.http.*
-import tech.healthpay.keyboard.BuildConfig
-import tech.healthpay.keyboard.model.*
+import tech.healthpay.keyboard.model.PaymentRequest
+import tech.healthpay.keyboard.model.PaymentTransaction
+import tech.healthpay.keyboard.model.TransactionStatus
+import tech.healthpay.keyboard.model.TransactionType
+import tech.healthpay.keyboard.model.WalletBalance
 import tech.healthpay.keyboard.security.TokenManager
 import java.util.concurrent.TimeUnit
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * HealthPay API Client
  * 
- * Handles all communication with the HealthPay wallet backend.
- * Based on the HealthPay API documentation.
+ * Handles all HTTP communication with the HealthPay backend.
+ * 
+ * NO HILT - Instantiated manually in Application class
  */
-@Singleton
-class HealthPayApiClient @Inject constructor(
+class HealthPayApiClient(
     private val context: Context,
     private val tokenManager: TokenManager
 ) {
-    companion object {
-        const val BASE_URL = "https://portal.beta.healthpay.tech/api/"
-        const val TIMEOUT_SECONDS = 30L
-    }
 
-    // ==================== Retrofit Setup ====================
+    private val gson: Gson = GsonBuilder()
+        .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+        .create()
 
-    private val loggingInterceptor = HttpLoggingInterceptor().apply {
-        level = if (BuildConfig.DEBUG) {
-            HttpLoggingInterceptor.Level.BODY
-        } else {
-            HttpLoggingInterceptor.Level.NONE
+    private val client: OkHttpClient by lazy {
+        val logging = HttpLoggingInterceptor { message ->
+            Log.d(TAG, message)
+        }.apply {
+            level = HttpLoggingInterceptor.Level.BODY
         }
-    }
 
-    private val authInterceptor = Interceptor { chain ->
-        val originalRequest = chain.request()
-        val token = tokenManager.getAccessToken()
-        
-        val newRequest = if (token != null) {
-            originalRequest.newBuilder()
-                .addHeader("Authorization", "Bearer $token")
-                .addHeader("Content-Type", "application/json")
-                .addHeader("Accept", "application/json")
-                .addHeader("X-Device-Platform", "Android")
-                .addHeader("X-App-Version", BuildConfig.VERSION_NAME)
-                .build()
-        } else {
-            originalRequest
-        }
-        
-        chain.proceed(newRequest)
-    }
+        OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .addInterceptor(logging)
+            .addInterceptor { chain ->
+                val original = chain.request()
+                val token = tokenManager.getAccessToken()
 
-    private val tokenRefreshInterceptor = Interceptor { chain ->
-        val response = chain.proceed(chain.request())
-        
-        if (response.code == 401) {
-            synchronized(this) {
-                // Try to refresh token
-                val refreshToken = tokenManager.getRefreshToken()
-                if (refreshToken != null) {
-                    val newTokens = refreshTokenSync(refreshToken)
-                    if (newTokens != null) {
-                        tokenManager.saveTokens(newTokens.accessToken, newTokens.refreshToken)
-                        
-                        // Retry original request with new token
-                        val newRequest = chain.request().newBuilder()
-                            .removeHeader("Authorization")
-                            .addHeader("Authorization", "Bearer ${newTokens.accessToken}")
-                            .build()
-                        
-                        response.close()
-                        return@Interceptor chain.proceed(newRequest)
+                val request = original.newBuilder()
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json")
+                    .apply {
+                        if (!token.isNullOrBlank()) {
+                            header("Authorization", "Bearer $token")
+                        }
                     }
-                }
+                    .build()
+
+                chain.proceed(request)
+            }
+            .build()
+    }
+
+    // ==================== Authentication APIs ====================
+
+    /**
+     * Request OTP for phone number
+     */
+    suspend fun requestOtp(phoneNumber: String): OtpResponse {
+        return withContext(Dispatchers.IO) {
+            try {
+                val body = mapOf("phone" to phoneNumber)
+                val response = post<OtpResponse>("$BASE_URL/auth/request-otp", body)
+                response ?: OtpResponse(success = false, message = "Request failed")
+            } catch (e: Exception) {
+                Log.e(TAG, "requestOtp failed", e)
+                OtpResponse(success = false, message = e.message)
             }
         }
-        
-        response
     }
 
-    private val okHttpClient = OkHttpClient.Builder()
-        .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        .writeTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        .addInterceptor(loggingInterceptor)
-        .addInterceptor(authInterceptor)
-        .addInterceptor(tokenRefreshInterceptor)
-        .build()
-
-    private val retrofit = Retrofit.Builder()
-        .baseUrl(BASE_URL)
-        .client(okHttpClient)
-        .addConverterFactory(GsonConverterFactory.create())
-        .build()
-
-    private val api = retrofit.create(HealthPayApi::class.java)
-
-    // ==================== Auth Methods ====================
-
-    suspend fun login(username: String, password: String): ApiResult<AuthResponse> {
-        return safeApiCall {
-            api.login(LoginRequest(username, password))
+    /**
+     * Verify OTP and get tokens
+     */
+    suspend fun verifyOtp(phoneNumber: String, otp: String): AuthResponse {
+        return withContext(Dispatchers.IO) {
+            try {
+                val body = mapOf("phone" to phoneNumber, "otp" to otp)
+                val response = post<AuthResponse>("$BASE_URL/auth/verify-otp", body)
+                response ?: AuthResponse(success = false, message = "Verification failed")
+            } catch (e: Exception) {
+                Log.e(TAG, "verifyOtp failed", e)
+                AuthResponse(success = false, message = e.message)
+            }
         }
     }
 
-    suspend fun refreshToken(refreshToken: String): ApiResult<AuthResponse> {
-        return safeApiCall {
-            api.refreshToken(RefreshTokenRequest(refreshToken))
+    /**
+     * Refresh access token
+     */
+    suspend fun refreshToken(refreshToken: String): AuthResponse {
+        return withContext(Dispatchers.IO) {
+            try {
+                val body = mapOf("refresh_token" to refreshToken)
+                val response = post<AuthResponse>("$BASE_URL/auth/refresh", body)
+                response ?: AuthResponse(success = false, message = "Refresh failed")
+            } catch (e: Exception) {
+                Log.e(TAG, "refreshToken failed", e)
+                AuthResponse(success = false, message = e.message)
+            }
         }
     }
 
-    private fun refreshTokenSync(refreshToken: String): AuthResponse? {
-        return try {
-            val call = api.refreshTokenSync(RefreshTokenRequest(refreshToken))
-            val response = call.execute()
-            if (response.isSuccessful) response.body() else null
-        } catch (e: Exception) {
-            null
+    // ==================== Wallet APIs ====================
+
+    /**
+     * Get wallet balance
+     */
+    suspend fun getWalletBalance(): WalletBalanceResponse {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = get<WalletBalanceResponse>("$BASE_URL/wallet/balance")
+                response ?: WalletBalanceResponse(success = false, message = "Failed to get balance")
+            } catch (e: Exception) {
+                Log.e(TAG, "getWalletBalance failed", e)
+                WalletBalanceResponse(success = false, message = e.message)
+            }
         }
     }
 
-    suspend fun logout(): ApiResult<Unit> {
-        return safeApiCall {
-            api.logout()
+    /**
+     * Send payment
+     */
+    suspend fun sendPayment(
+        amount: Double,
+        recipient: String,
+        currency: String = "EGP",
+        note: String? = null
+    ): PaymentResponse {
+        return withContext(Dispatchers.IO) {
+            try {
+                val body = mutableMapOf<String, Any>(
+                    "amount" to amount,
+                    "recipient" to recipient,
+                    "currency" to currency
+                )
+                note?.let { body["note"] = it }
+
+                val response = post<PaymentResponse>("$BASE_URL/wallet/send", body)
+                response ?: PaymentResponse(success = false, message = "Payment failed")
+            } catch (e: Exception) {
+                Log.e(TAG, "sendPayment failed", e)
+                PaymentResponse(success = false, message = e.message)
+            }
         }
     }
 
-    // ==================== Wallet Methods ====================
+    /**
+     * Create payment request
+     */
+    suspend fun requestPayment(
+        amount: Double,
+        currency: String = "EGP",
+        note: String? = null
+    ): PaymentRequestResponse {
+        return withContext(Dispatchers.IO) {
+            try {
+                val body = mutableMapOf<String, Any>(
+                    "amount" to amount,
+                    "currency" to currency
+                )
+                note?.let { body["note"] = it }
 
-    suspend fun getBalance(): ApiResult<WalletBalance> {
-        return safeApiCall {
-            api.getBalance()
+                val response = post<PaymentRequestResponse>("$BASE_URL/wallet/request", body)
+                response ?: PaymentRequestResponse(success = false, message = "Request failed")
+            } catch (e: Exception) {
+                Log.e(TAG, "requestPayment failed", e)
+                PaymentRequestResponse(success = false, message = e.message)
+            }
         }
     }
 
-    suspend fun sendPayment(request: SendPaymentRequest): ApiResult<Transaction> {
-        return safeApiCall {
-            api.sendPayment(request)
-        }
-    }
-
-    suspend fun requestPayment(request: RequestPaymentRequest): ApiResult<PaymentLink> {
-        return safeApiCall {
-            api.requestPayment(request)
-        }
-    }
-
+    /**
+     * Get transaction history
+     */
     suspend fun getTransactionHistory(
         page: Int = 1,
         limit: Int = 20
-    ): ApiResult<TransactionListResponse> {
-        return safeApiCall {
-            api.getTransactions(page, limit)
-        }
-    }
-
-    suspend fun getTransactionDetails(transactionId: String): ApiResult<Transaction> {
-        return safeApiCall {
-            api.getTransactionDetails(transactionId)
-        }
-    }
-
-    // ==================== QR Methods ====================
-
-    suspend fun generatePaymentQR(amount: Double?, description: String?): ApiResult<QRCodeResponse> {
-        return safeApiCall {
-            api.generatePaymentQR(GenerateQRRequest(amount, description))
-        }
-    }
-
-    suspend fun processQRPayment(qrData: String, pin: String): ApiResult<Transaction> {
-        return safeApiCall {
-            api.processQRPayment(ProcessQRRequest(qrData, pin))
+    ): TransactionHistoryResponse {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = get<TransactionHistoryResponse>(
+                    "$BASE_URL/wallet/transactions?page=$page&limit=$limit"
+                )
+                response ?: TransactionHistoryResponse(success = false, message = "Failed to get history")
+            } catch (e: Exception) {
+                Log.e(TAG, "getTransactionHistory failed", e)
+                TransactionHistoryResponse(success = false, message = e.message)
+            }
         }
     }
 
     // ==================== Helper Methods ====================
 
-    private suspend fun <T> safeApiCall(call: suspend () -> Response<T>): ApiResult<T> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val response = call()
-                
-                if (response.isSuccessful) {
-                    response.body()?.let {
-                        ApiResult.Success(it)
-                    } ?: ApiResult.Error("Empty response body")
-                } else {
-                    val errorBody = response.errorBody()?.string()
-                    val errorMessage = parseErrorMessage(errorBody) ?: "Unknown error"
-                    ApiResult.Error(errorMessage, response.code())
-                }
-            } catch (e: Exception) {
-                ApiResult.Error(e.message ?: "Network error", -1)
-            }
-        }
-    }
+    private inline fun <reified T> get(url: String): T? {
+        val request = Request.Builder()
+            .url(url)
+            .get()
+            .build()
 
-    private fun parseErrorMessage(errorBody: String?): String? {
-        return try {
-            // Parse error JSON and extract message
-            errorBody?.let {
-                com.google.gson.Gson().fromJson(it, ErrorResponse::class.java)?.message
-            }
-        } catch (e: Exception) {
+        val response = client.newCall(request).execute()
+        val body = response.body?.string()
+
+        return if (response.isSuccessful && body != null) {
+            gson.fromJson(body, T::class.java)
+        } else {
             null
         }
     }
-}
 
-// ==================== API Interface ====================
+    private inline fun <reified T> post(url: String, body: Any): T? {
+        val jsonBody = gson.toJson(body).toRequestBody(JSON_MEDIA_TYPE)
 
-interface HealthPayApi {
-    
-    // Auth
-    @POST("auth/login")
-    suspend fun login(@Body request: LoginRequest): Response<AuthResponse>
+        val request = Request.Builder()
+            .url(url)
+            .post(jsonBody)
+            .build()
 
-    @POST("auth/refresh")
-    suspend fun refreshToken(@Body request: RefreshTokenRequest): Response<AuthResponse>
+        val response = client.newCall(request).execute()
+        val responseBody = response.body?.string()
 
-    @POST("auth/refresh")
-    fun refreshTokenSync(@Body request: RefreshTokenRequest): retrofit2.Call<AuthResponse>
+        return if (response.isSuccessful && responseBody != null) {
+            gson.fromJson(responseBody, T::class.java)
+        } else {
+            null
+        }
+    }
 
-    @POST("auth/logout")
-    suspend fun logout(): Response<Unit>
+    /**
+     * Clear authentication state
+     */
+    fun clearAuth() {
+        // Nothing to clear in the client itself
+        // TokenManager handles token storage
+    }
 
-    // Wallet
-    @GET("wallet/balance")
-    suspend fun getBalance(): Response<WalletBalance>
+    companion object {
+        private const val TAG = "HealthPayApiClient"
+        private const val BASE_URL = "https://portal.beta.healthpay.tech/api/v1"
+        private val JSON_MEDIA_TYPE = "application/json".toMediaType()
+    }
 
-    @POST("wallet/send")
-    suspend fun sendPayment(@Body request: SendPaymentRequest): Response<Transaction>
+    // ==================== Response Data Classes ====================
 
-    @POST("wallet/request")
-    suspend fun requestPayment(@Body request: RequestPaymentRequest): Response<PaymentLink>
+    data class OtpResponse(
+        val success: Boolean,
+        val message: String? = null
+    )
 
-    @GET("wallet/transactions")
-    suspend fun getTransactions(
-        @Query("page") page: Int,
-        @Query("limit") limit: Int
-    ): Response<TransactionListResponse>
+    data class AuthResponse(
+        val success: Boolean,
+        val message: String? = null,
+        @SerializedName("access_token")
+        val accessToken: String? = null,
+        @SerializedName("refresh_token")
+        val refreshToken: String? = null,
+        @SerializedName("expires_in")
+        val expiresIn: Long? = null,
+        @SerializedName("user_id")
+        val userId: String? = null
+    )
 
-    @GET("wallet/transactions/{id}")
-    suspend fun getTransactionDetails(@Path("id") id: String): Response<Transaction>
+    data class WalletBalanceResponse(
+        val success: Boolean,
+        val message: String? = null,
+        val balance: Double? = null,
+        val currency: String? = null,
+        @SerializedName("formatted_balance")
+        val formattedBalance: String? = null
+    ) {
+        fun toWalletBalance(): WalletBalance? {
+            return if (balance != null && currency != null) {
+                WalletBalance(
+                    balance = balance,
+                    currency = currency,
+                    formattedBalance = formattedBalance ?: "$currency $balance"
+                )
+            } else null
+        }
+    }
 
-    // QR
-    @POST("qr/generate")
-    suspend fun generatePaymentQR(@Body request: GenerateQRRequest): Response<QRCodeResponse>
+    data class PaymentResponse(
+        val success: Boolean,
+        val message: String? = null,
+        @SerializedName("transaction_id")
+        val transactionId: String? = null,
+        val amount: Double? = null,
+        val currency: String? = null,
+        val status: String? = null
+    )
 
-    @POST("qr/process")
-    suspend fun processQRPayment(@Body request: ProcessQRRequest): Response<Transaction>
-}
+    data class PaymentRequestResponse(
+        val success: Boolean,
+        val message: String? = null,
+        @SerializedName("request_id")
+        val requestId: String? = null,
+        @SerializedName("payment_link")
+        val paymentLink: String? = null,
+        @SerializedName("qr_code")
+        val qrCode: String? = null,
+        val amount: Double? = null,
+        val currency: String? = null
+    ) {
+        fun toPaymentRequest(): PaymentRequest? {
+            return if (requestId != null && amount != null && currency != null) {
+                PaymentRequest(
+                    requestId = requestId,
+                    amount = amount,
+                    currency = currency,
+                    paymentLink = paymentLink,
+                    qrCodeData = qrCode,
+                    expiresAt = null
+                )
+            } else null
+        }
+    }
 
-// ==================== Request/Response Models ====================
+    data class TransactionHistoryResponse(
+        val success: Boolean,
+        val message: String? = null,
+        val transactions: List<TransactionDto>? = null,
+        val page: Int? = null,
+        @SerializedName("total_pages")
+        val totalPages: Int? = null
+    )
 
-data class LoginRequest(
-    val username: String,
-    val password: String
-)
-
-data class RefreshTokenRequest(
-    val refreshToken: String
-)
-
-data class AuthResponse(
-    val accessToken: String,
-    val refreshToken: String,
-    val expiresIn: Long,
-    val user: UserInfo
-)
-
-data class UserInfo(
-    val id: String,
-    val name: String,
-    val phone: String,
-    val email: String?
-)
-
-data class SendPaymentRequest(
-    val amount: Double,
-    val recipientPhone: String,
-    val description: String? = null,
-    val pin: String? = null // Encrypted
-)
-
-data class RequestPaymentRequest(
-    val amount: Double,
-    val description: String? = null,
-    val expiresIn: Int = 24 // Hours
-)
-
-data class PaymentLink(
-    val link: String,
-    val qrCode: String,
-    val expiresAt: String
-)
-
-data class TransactionListResponse(
-    val transactions: List<Transaction>,
-    val total: Int,
-    val page: Int,
-    val hasMore: Boolean
-)
-
-data class GenerateQRRequest(
-    val amount: Double?,
-    val description: String?
-)
-
-data class QRCodeResponse(
-    val qrData: String,
-    val qrImage: String, // Base64 encoded
-    val expiresAt: String
-)
-
-data class ProcessQRRequest(
-    val qrData: String,
-    val pin: String // Encrypted
-)
-
-data class ErrorResponse(
-    val message: String?,
-    val code: String?,
-    val errors: Map<String, List<String>>?
-)
-
-// ==================== API Result Wrapper ====================
-
-sealed class ApiResult<out T> {
-    data class Success<T>(val data: T) : ApiResult<T>()
-    data class Error(val message: String, val code: Int = -1) : ApiResult<Nothing>()
-    
-    val isSuccess: Boolean get() = this is Success
-    val isError: Boolean get() = this is Error
-    
-    fun getOrNull(): T? = (this as? Success)?.data
-    fun errorMessageOrNull(): String? = (this as? Error)?.message
+    data class TransactionDto(
+        val id: String,
+        val amount: Double,
+        val currency: String,
+        val recipient: String?,
+        val sender: String?,
+        val status: String,
+        val type: String,
+        val timestamp: Long,
+        val note: String?
+    ) {
+        fun toPaymentTransaction(): PaymentTransaction {
+            return PaymentTransaction(
+                id = id,
+                amount = amount,
+                currency = currency,
+                recipient = recipient,
+                sender = sender,
+                status = when (status.uppercase()) {
+                    "COMPLETED" -> TransactionStatus.COMPLETED
+                    "PENDING" -> TransactionStatus.PENDING
+                    "FAILED" -> TransactionStatus.FAILED
+                    "CANCELLED" -> TransactionStatus.CANCELLED
+                    else -> TransactionStatus.PENDING
+                },
+                type = when (type.uppercase()) {
+                    "SEND" -> TransactionType.SEND
+                    "RECEIVE" -> TransactionType.RECEIVE
+                    "REQUEST" -> TransactionType.REQUEST
+                    else -> TransactionType.SEND
+                },
+                timestamp = timestamp,
+                note = note
+            )
+        }
+    }
 }

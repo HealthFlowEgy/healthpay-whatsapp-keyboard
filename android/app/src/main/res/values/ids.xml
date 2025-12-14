@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Transaction item IDs -->
-    <item name="avatar" type="id" />
-    <item name="name" type="id" />
-    <item name="date" type="id" />
-    <item name="amount" type="id" />
-    <item name="status" type="id" />
-</resources>

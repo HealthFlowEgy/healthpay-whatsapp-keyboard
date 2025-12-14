@@ -1,22 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <input-method xmlns:android="http://schemas.android.com/apk/res/android"
     android:settingsActivity="tech.healthpay.keyboard.SettingsActivity"
-    android:icon="@mipmap/ic_launcher"
-    android:isDefault="false"
-    android:supportsSwitchingToNextInputMethod="true">
-    
+    android:icon="@mipmap/ic_launcher">
+
     <subtype
-        android:label="@string/english"
-        android:languageTag="en"
-        android:imeSubtypeMode="keyboard"
+        android:label="@string/keyboard_label"
+        android:languageTag="en-US"
         android:imeSubtypeLocale="en_US"
-        android:isAsciiCapable="true" />
-    
-    <subtype
-        android:label="@string/arabic"
-        android:languageTag="ar"
         android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true" />
+
+    <subtype
+        android:label="@string/keyboard_label"
+        android:languageTag="ar"
         android:imeSubtypeLocale="ar"
+        android:imeSubtypeMode="keyboard"
         android:isAsciiCapable="false" />
-        
+
 </input-method>

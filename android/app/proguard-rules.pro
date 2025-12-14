@@ -1,99 +1,40 @@
-# This is a configuration file for ProGuard.
-# http://proguard.sourceforge.net/index.html#manual/usage.html
+# HealthPay Keyboard ProGuard Rules
 
-# ==================== General Rules ====================
+# Keep app classes
+-keep class tech.healthpay.keyboard.** { *; }
 
-# Keep line numbers for crash reports
--keepattributes SourceFile,LineNumberTable
--renamesourcefileattribute SourceFile
-
-# Keep annotations
--keepattributes *Annotation*
-
-# Keep enums
--keepclassmembers enum * {
-    public static **[] values();
-    public static ** valueOf(java.lang.String);
-}
-
-# ==================== Kotlin ====================
-
--keep class kotlin.** { *; }
--keep class kotlinx.** { *; }
--dontwarn kotlin.**
--dontwarn kotlinx.**
-
-# ==================== AndroidX ====================
-
--keep class androidx.** { *; }
--dontwarn androidx.**
-
-# ==================== Retrofit ====================
-
+# Retrofit
 -keepattributes Signature
--keepattributes *Annotation*
--keep class retrofit2.** { *; }
+-keepattributes Exceptions
 -dontwarn retrofit2.**
--keepclasseswithmembers class * {
-    @retrofit2.http.* <methods>;
-}
+-keep class retrofit2.** { *; }
 
-# ==================== OkHttp ====================
-
--keep class okhttp3.** { *; }
--keep interface okhttp3.** { *; }
+# OkHttp
 -dontwarn okhttp3.**
 -dontwarn okio.**
+-keep class okhttp3.** { *; }
+-keep class okio.** { *; }
 
-# ==================== Gson ====================
-
+# Gson
+-keepattributes *Annotation*
 -keep class com.google.gson.** { *; }
--keep interface com.google.gson.** { *; }
--dontwarn com.google.gson.**
+-keep class * implements com.google.gson.TypeAdapterFactory
+-keep class * implements com.google.gson.JsonSerializer
+-keep class * implements com.google.gson.JsonDeserializer
 
-# Keep model classes for Gson serialization
+# Model classes
 -keep class tech.healthpay.keyboard.model.** { *; }
--keep class tech.healthpay.keyboard.api.** { *; }
+-keep class tech.healthpay.keyboard.api.**$* { *; }
 
-# ==================== Hilt ====================
-
--keep class dagger.hilt.** { *; }
--keep interface dagger.hilt.** { *; }
--dontwarn dagger.hilt.**
-
-# ==================== HealthPay App Classes ====================
-
--keep class tech.healthpay.keyboard.** { *; }
--keep interface tech.healthpay.keyboard.** { *; }
-
-# Keep all public classes and methods
--keepclasseswithmembernames class tech.healthpay.keyboard.** {
-    public <methods>;
-    public <fields>;
-}
-
-# Keep serializable classes
--keepclassmembers class * implements java.io.Serializable {
-    static final long serialVersionUID;
-    private static final java.io.ObjectStreamField[] serialPersistentFields;
-    private void writeObject(java.io.ObjectOutputStream);
-    private void readObject(java.io.ObjectInputStream);
-    java.lang.Object writeReplace();
-    java.lang.Object readResolve();
-}
-
-# ==================== Security ====================
-
--keep class androidx.security.** { *; }
+# Biometric
 -keep class androidx.biometric.** { *; }
 
-# ==================== Timber Logging ====================
+# ZXing
+-keep class com.google.zxing.** { *; }
+-keep class com.journeyapps.** { *; }
 
--keep class com.jakewharton.timber.** { *; }
+# Security
+-keep class androidx.security.crypto.** { *; }
 
-# ==================== Debugging ====================
-
-# Uncomment for debugging
-# -verbose
-# -printmapping mapping.txt
-# -printseeds seeds.txt
+# Coroutines
+-keepnames class kotlinx.coroutines.** { *; }

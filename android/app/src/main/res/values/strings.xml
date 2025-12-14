@@ -1,141 +1,71 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- App Info -->
     <string name="app_name">HealthPay Keyboard</string>
-    <string name="keyboard_name">HealthPay</string>
-    <string name="keyboard_description">Pay directly from WhatsApp with HealthPay wallet</string>
-    
-    <!-- Toolbar -->
-    <string name="pay">Pay</string>
-    <string name="request">Request</string>
-    <string name="balance">Balance</string>
-    <string name="qr">QR</string>
-    <string name="settings">Settings</string>
-    <string name="history">History</string>
-    
-    <!-- Authentication -->
+    <string name="app_description">Pay and receive money from your keyboard</string>
+    <string name="keyboard_label">HealthPay</string>
+    <string name="keyboard_subtitle">Secure payments keyboard</string>
+
+    <!-- Keyboard Setup -->
+    <string name="keyboard_setup">Keyboard Setup</string>
+    <string name="keyboard_not_enabled">Keyboard not enabled</string>
+    <string name="keyboard_enabled_not_selected">Keyboard enabled but not selected</string>
+    <string name="keyboard_ready">✓ Keyboard ready</string>
+    <string name="enable_keyboard">Enable Keyboard</string>
+    <string name="select_keyboard">Select HealthPay</string>
+
+    <!-- Account -->
+    <string name="account">Account</string>
+    <string name="logged_in">✓ Logged in</string>
+    <string name="not_logged_in">Not logged in</string>
     <string name="login">Login</string>
     <string name="logout">Logout</string>
-    <string name="login_required">Login to use HealthPay payments</string>
-    <string name="username">Username</string>
-    <string name="password">Password</string>
-    <string name="forgot_password">Forgot Password?</string>
-    <string name="login_failed">Login failed. Please try again.</string>
-    <string name="invalid_credentials">Invalid username or password</string>
-    
-    <!-- Biometric -->
-    <string name="biometric_prompt_title">Authenticate</string>
-    <string name="biometric_prompt_subtitle">Confirm your identity for HealthPay</string>
-    <string name="biometric_prompt_negative">Cancel</string>
-    <string name="biometric_pay_title">Authenticate to Pay</string>
-    <string name="biometric_pay_subtitle">Confirm your identity to send payment</string>
-    <string name="biometric_view_title">View Wallet</string>
-    <string name="biometric_view_subtitle">Authenticate to see your balance</string>
-    <string name="biometric_failed">Authentication failed</string>
-    <string name="biometric_not_available">Biometric authentication not available</string>
-    
-    <!-- Payment -->
-    <string name="quick_pay">Quick Pay</string>
-    <string name="send_money">Send Money</string>
-    <string name="request_money">Request Money</string>
-    <string name="share_link">Share Link</string>
-    <string name="topup">Top Up</string>
-    <string name="refresh_balance">Refresh balance</string>
-    <string name="phone_hint">+20 123 456 7890</string>
-    <string name="amount_hint">0.00</string>
-    <string name="note_hint">Optional note</string>
-    <string name="confirm_payment">Confirm Payment</string>
-    <string name="quick_amount_50">50 EGP</string>
-    <string name="quick_amount_100">100 EGP</string>
-    <string name="quick_amount_500">500 EGP</string>
-    <string name="send_payment">Send Payment</string>
-    <string name="request_payment">Request Payment</string>
-    <string name="amount">Amount</string>
-    <string name="recipient_phone">Recipient Phone</string>
-    <string name="note_optional">Note (optional)</string>
-    <string name="recent_recipients">Recent</string>
-    <string name="send">Send</string>
-    <string name="cancel">Cancel</string>
-    <string name="confirm">Confirm</string>
-    <string name="payment_successful">Payment sent successfully!</string>
-    <string name="payment_failed">Payment failed</string>
-    <string name="invalid_amount">Please enter a valid amount</string>
-    <string name="invalid_phone">Please enter a valid phone number</string>
-    
-    <!-- Payment Message Templates -->
-    <string name="payment_sent_message">💳 *HealthPay Payment Sent*\n━━━━━━━━━━━━━━━━\nAmount: EGP %1$.2f\nTo: %2$s\nRef: %3$s\nTime: %4$s\n━━━━━━━━━━━━━━━━\n✅ Powered by HealthPay Wallet</string>
-    <string name="payment_request_message">💰 *Payment Request*\n━━━━━━━━━━━━━━━━\nAmount: EGP %1$.2f\n\n👉 Tap to pay: %2$s\n━━━━━━━━━━━━━━━━\nPowered by HealthPay</string>
-    
-    <!-- Wallet -->
-    <string name="wallet_balance">Wallet Balance</string>
-    <string name="available_balance">Available</string>
-    <string name="pending_balance">Pending</string>
-    <string name="egp">EGP</string>
-    <string name="balance_updated">Balance checked at %1$s</string>
-    
-    <!-- Transactions -->
-    <string name="recent_transactions">Recent Transactions</string>
-    <string name="transaction_history">Transaction History</string>
-    <string name="no_transactions">No transactions yet</string>
-    <string name="sent">Sent</string>
-    <string name="received">Received</string>
-    <string name="pending">Pending</string>
-    <string name="completed">Completed</string>
-    <string name="failed">Failed</string>
-    
-    <!-- QR -->
-    <string name="scan_qr">Scan QR</string>
-    <string name="my_qr">My QR</string>
-    <string name="generate_qr">Generate QR</string>
-    <string name="qr_payment">QR Payment</string>
-    <string name="scan_to_pay">Scan to pay</string>
-    
+    <string name="login_success">Login successful</string>
+    <string name="login_cancelled">Login cancelled</string>
+    <string name="logged_out_success">Logged out</string>
+
     <!-- Settings -->
-    <string name="keyboard_settings">Keyboard Settings</string>
-    <string name="payment_settings">Payment Settings</string>
-    <string name="security_settings">Security</string>
-    <string name="haptic_feedback">Haptic Feedback</string>
-    <string name="sound_feedback">Sound Feedback</string>
+    <string name="settings">Settings</string>
+    <string name="security">Security</string>
+    <string name="feedback">Feedback</string>
     <string name="biometric_auth">Biometric Authentication</string>
-    <string name="auto_capitalize">Auto Capitalize</string>
-    <string name="default_language">Default Language</string>
-    <string name="english">English</string>
-    <string name="arabic">العربية</string>
-    <string name="session_timeout">Session Timeout</string>
-    <string name="about">About</string>
-    <string name="version">Version</string>
-    <string name="privacy_policy">Privacy Policy</string>
-    <string name="terms_of_service">Terms of Service</string>
-    
-    <!-- Errors -->
-    <string name="error_generic">Something went wrong. Please try again.</string>
-    <string name="error_network">Network connection error</string>
-    <string name="error_server">Server error. Please try again later.</string>
-    <string name="error_timeout">Request timed out</string>
-    <string name="error_unauthorized">Session expired. Please login again.</string>
-    
-    <!-- Setup -->
-    <string name="setup_title">Setup HealthPay Keyboard</string>
-    <string name="setup_step1">1. Enable Keyboard</string>
-    <string name="setup_step1_desc">Go to Settings → System → Languages → On-screen keyboard</string>
-    <string name="setup_step2">2. Select HealthPay</string>
-    <string name="setup_step2_desc">Enable HealthPay Keyboard in the list</string>
-    <string name="setup_step3">3. Login</string>
-    <string name="setup_step3_desc">Sign in with your HealthPay account</string>
-    <string name="enable_keyboard">Enable Keyboard</string>
-    <string name="select_keyboard">Select Keyboard</string>
-    <string name="get_started">Get Started</string>
-    
-    <!-- Accessibility -->
-    <string name="content_desc_pay_button">Pay button</string>
-    <string name="content_desc_request_button">Request payment button</string>
-    <string name="content_desc_balance">Wallet balance</string>
-    <string name="content_desc_qr_button">QR code button</string>
-    <string name="content_desc_settings_button">Settings button</string>
-    <string name="content_desc_close_button">Close button</string>
-    <string name="content_desc_delete_key">Delete key</string>
-    <string name="content_desc_shift_key">Shift key</string>
-    <string name="content_desc_space_key">Space key</string>
-    <string name="content_desc_enter_key">Enter key</string>
-    <string name="content_desc_language_switch">Switch language</string>
+    <string name="biometric_auth_description">Use fingerprint or face to authenticate</string>
+    <string name="show_balance">Show Balance</string>
+    <string name="show_balance_description">Display balance on keyboard</string>
+    <string name="balance_hidden_warning">Balance will be hidden</string>
+    <string name="key_sounds">Key Sounds</string>
+    <string name="key_sounds_description">Play sound on key press</string>
+    <string name="vibration">Vibration</string>
+    <string name="vibration_description">Vibrate on key press</string>
+    <string name="version_format">Version %s</string>
+
+    <!-- Biometric -->
+    <string name="biometric_login_title">Login to HealthPay</string>
+    <string name="biometric_login_subtitle">Authenticate to continue</string>
+    <string name="biometric_transaction_title">Confirm Payment</string>
+    <string name="biometric_transaction_subtitle">Authenticate to confirm</string>
+    <string name="biometric_auth_title">Authentication Required</string>
+    <string name="biometric_auth_subtitle">Please authenticate</string>
+    <string name="biometric_not_recognized">Not recognized</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- QR Scanner -->
+    <string name="scan_qr">Scan QR Code</string>
+    <string name="scan_qr_instructions">Position QR code in frame</string>
+    <string name="camera_permission_rationale">Camera is required to scan QR codes</string>
+    <string name="camera_permission_denied">Camera permission denied</string>
+    <string name="grant_permission">Grant Permission</string>
+    <string name="invalid_qr_code">Invalid QR code</string>
+    <string name="close">Close</string>
+
+    <!-- Deep Links -->
+    <string name="login_required_for_payment">Please login first</string>
+    <string name="login_required_for_request">Please login first</string>
+    <string name="login_required_for_wallet">Please login first</string>
+
+    <!-- Wallet -->
+    <string name="wallet">Wallet</string>
+    <string name="balance">Balance</string>
+    <string name="send_money">Send</string>
+    <string name="request_money">Request</string>
+    <string name="share_link">Share</string>
 </resources>

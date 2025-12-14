@@ -5,20 +5,20 @@
             <certificates src="system" />
         </trust-anchors>
     </base-config>
-    
-    <!-- Allow cleartext traffic for localhost during development -->
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">localhost</domain>
-        <domain includeSubdomains="true">127.0.0.1</domain>
-        <domain includeSubdomains="true">10.0.2.2</domain>
-    </domain-config>
-    
-    <!-- Production domains with certificate pinning -->
-    <domain-config>
+
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">healthpay.tech</domain>
         <domain includeSubdomains="true">portal.healthpay.tech</domain>
         <domain includeSubdomains="true">portal.beta.healthpay.tech</domain>
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </domain-config>
+
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="user" />
+            <certificates src="system" />
+        </trust-anchors>
+    </debug-overrides>
 </network-security-config>
