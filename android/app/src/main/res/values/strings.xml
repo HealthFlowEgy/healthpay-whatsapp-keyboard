@@ -1,86 +1,90 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
     <!-- App Info -->
     <string name="app_name">HealthPay Keyboard</string>
-    <string name="app_name_short">HealthPay</string>
-
+    <string name="app_description">Secure payment keyboard for HealthPay wallet</string>
+    
+    <!-- Keyboard Labels (Bug #3 Fix - Unique labels for each subtype) -->
+    <string name="keyboard_label_en">HealthPay (English)</string>
+    <string name="keyboard_label_ar">HealthPay (العربية)</string>
+    
     <!-- Login Screen -->
-    <string name="login_subtitle">Secure wallet payments from your keyboard</string>
-    <string name="enter_phone_number">Enter your mobile number</string>
-    <string name="phone_number_hint">We\'ll send you an OTP to verify</string>
-    <string name="phone_placeholder">1XX XXX XXXX</string>
-    <string name="send_otp">Send OTP</string>
-    <string name="verify_otp">Verify OTP</string>
-    <string name="otp_sent_to">OTP sent to</string>
-    <string name="change">Change</string>
-    <string name="didnt_receive_otp">Didn\'t receive OTP?</string>
-    <string name="resend">Resend</string>
-    <string name="verify_and_login">Verify &amp; Login</string>
-    <string name="security_note">Your data is encrypted and secure</string>
-    <string name="secure">Secure</string>
-
-    <!-- Main Screen -->
-    <string name="login">Login</string>
-    <string name="logout">Logout</string>
-    <string name="logged_in">Logged In</string>
-    <string name="logged_in_description">Connected as %1$s</string>
-    <string name="not_logged_in">Not Logged In</string>
-    <string name="not_logged_in_description">Login to access wallet features</string>
-    <string name="login_successful">Login successful!</string>
-    <string name="logged_out_successfully">Logged out successfully</string>
-    <string name="authentication_successful">Authentication successful!</string>
-
-    <!-- Logout Confirmation -->
-    <string name="logout_confirmation_title">Logout</string>
-    <string name="logout_confirmation_message">Are you sure you want to logout? You\'ll need to login again to use wallet features.</string>
-    <string name="cancel">Cancel</string>
-
-    <!-- Keyboard Status -->
-    <string name="keyboard_ready">Keyboard Ready</string>
-    <string name="keyboard_ready_description">HealthPay keyboard is active and ready to use</string>
-    <string name="keyboard_enabled">Keyboard Enabled</string>
-    <string name="keyboard_select_description">Select HealthPay as your keyboard</string>
-    <string name="keyboard_not_enabled">Keyboard Not Enabled</string>
-    <string name="keyboard_enable_description">Enable HealthPay in keyboard settings</string>
-    <string name="enable_keyboard">Enable Keyboard</string>
-    <string name="select_keyboard">Select Keyboard</string>
-    <string name="error_opening_settings">Could not open settings</string>
-
-    <!-- Keyboard Actions -->
-    <string name="space">space</string>
-    <string name="shift">Shift</string>
-    <string name="backspace">Backspace</string>
-    <string name="enter">Enter</string>
-    <string name="emoji">Emoji</string>
-    <string name="toggle_healthpay">Toggle HealthPay Panel</string>
-    <string name="keyboard_settings">Keyboard Settings</string>
-
-    <!-- HealthPay Panel -->
-    <string name="wallet_balance">Wallet Balance</string>
-    <string name="refresh_balance">Refresh Balance</string>
-    <string name="send">Send</string>
-    <string name="request">Request</string>
-    <string name="scan">Scan</string>
-    <string name="history">History</string>
-    <string name="send_money">Send Money</string>
-    <string name="request_money">Request Money</string>
-    <string name="qr_code">QR Code</string>
-
-    <!-- Biometric -->
-    <string name="biometric_title">Authenticate</string>
-    <string name="biometric_subtitle">Use your fingerprint or face to authenticate</string>
-    <string name="biometric_negative_button">Use PIN</string>
-    <string name="biometric_setup_title">Setup Biometric</string>
-    <string name="biometric_setup_description">Use fingerprint or face for quick access</string>
-    <string name="skip">Skip</string>
-    <string name="enable_biometric">Enable Biometric</string>
-
-    <!-- Errors -->
-    <string name="error_generic">Something went wrong. Please try again.</string>
-    <string name="error_network">Network error. Check your connection.</string>
-    <string name="error_invalid_phone">Please enter a valid phone number</string>
+    <string name="login_title">Welcome to HealthPay</string>
+    <string name="login_subtitle">Enter your mobile number to continue</string>
+    <string name="login_footer">By continuing, you agree to our Terms of Service and Privacy Policy</string>
+    
+    <!-- Input Hints -->
+    <string name="hint_mobile_number">Mobile Number</string>
+    <string name="hint_otp">Enter 6-digit OTP</string>
+    
+    <!-- Buttons -->
+    <string name="btn_send_otp">Send OTP</string>
+    <string name="btn_verify_otp">Verify &amp; Continue</string>
+    <string name="btn_resend_otp">Resend OTP</string>
+    <string name="btn_continue">Continue</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_retry">Retry</string>
+    
+    <!-- Status Messages -->
+    <string name="status_sending_otp">Sending OTP…</string>
+    <string name="status_verifying">Verifying…</string>
+    <string name="status_otp_sent">OTP sent successfully</string>
+    <string name="status_login_success">Login successful!</string>
+    
+    <!-- Error Messages -->
+    <string name="error_invalid_mobile">Please enter a valid Egyptian mobile number</string>
     <string name="error_invalid_otp">Invalid OTP. Please try again.</string>
-    <string name="error_session_expired">Session expired. Please login again.</string>
-
+    <string name="error_otp_expired">OTP has expired. Please request a new one.</string>
+    <string name="error_network">Network error. Please check your connection.</string>
+    <string name="error_server">Server error. Please try again later.</string>
+    <string name="error_too_many_attempts">Too many attempts. Please wait before trying again.</string>
+    
+    <!-- Timer -->
+    <string name="timer_resend_otp">Resend OTP in %1$ds</string>
+    
+    <!-- Main Screen -->
+    <string name="welcome_user">Welcome, %1$s</string>
+    <string name="balance_loading">Loading balance…</string>
+    <string name="balance_format">%1$s %2$.2f</string>
+    <string name="balance_error">Unable to load balance</string>
+    <string name="enable_keyboard">Enable Keyboard</string>
+    <string name="keyboard_enabled">✓ Keyboard Enabled</string>
+    <string name="select_keyboard">Select HealthPay Keyboard</string>
+    
+    <!-- Keyboard -->
+    <string name="keyboard_switch_language">Switch Language</string>
+    <string name="keyboard_settings">Keyboard Settings</string>
+    
+    <!-- Wallet -->
+    <string name="wallet_balance">Balance</string>
+    <string name="wallet_send_money">Send Money</string>
+    <string name="wallet_request_money">Request Money</string>
+    <string name="wallet_transactions">Transactions</string>
+    
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_account">Account</string>
+    <string name="settings_security">Security</string>
+    <string name="settings_biometric">Biometric Authentication</string>
+    <string name="settings_biometric_desc">Use fingerprint to authorize payments</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_about">About</string>
+    <string name="settings_logout">Logout</string>
+    <string name="version_format">Version %1$s</string>
+    
+    <!-- Biometric -->
+    <string name="biometric_available">Biometric authentication is available</string>
+    <string name="biometric_not_enrolled">No fingerprint enrolled. Please add one in device settings.</string>
+    <string name="biometric_no_hardware">This device does not support biometric authentication</string>
+    <string name="biometric_unavailable">Biometric authentication is unavailable</string>
+    <string name="biometric_title">Authenticate</string>
+    <string name="biometric_subtitle">Use your fingerprint to continue</string>
+    
+    <!-- Accessibility -->
+    <string name="cd_shift">Shift key</string>
+    <string name="cd_backspace">Backspace</string>
+    <string name="cd_enter">Enter</string>
+    <string name="cd_space">Space</string>
+    <string name="cd_logo">HealthPay Logo</string>
 </resources>

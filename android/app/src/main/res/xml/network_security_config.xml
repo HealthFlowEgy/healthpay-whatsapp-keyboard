@@ -1,14 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <base-config cleartextTrafficPermitted="false">
-        <trust-anchors>
-            <certificates src="system" />
-        </trust-anchors>
-    </base-config>
-    
     <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">healthpay.tech</domain>
-        <domain includeSubdomains="true">beta.healthpay.tech</domain>
+        <domain includeSubdomains="true">portal.beta.healthpay.tech</domain>
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>

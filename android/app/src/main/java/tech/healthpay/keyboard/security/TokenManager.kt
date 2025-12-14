@@ -1,103 +1,79 @@
 package tech.healthpay.keyboard.security
 
-import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
 
 /**
- * TokenManager handles secure storage and retrieval of authentication tokens.
+ * Token Manager - Handles secure storage and retrieval of auth tokens
  */
-class TokenManager(context: Context) {
+class TokenManager(private val prefs: SharedPreferences) {
 
     companion object {
         private const val TAG = "TokenManager"
-        private const val PREFS_NAME = "healthpay_tokens"
         private const val KEY_ACCESS_TOKEN = "access_token"
         private const val KEY_REFRESH_TOKEN = "refresh_token"
         private const val KEY_TOKEN_EXPIRY = "token_expiry"
+        private const val KEY_USER_ID = "user_id"
+        private const val KEY_MOBILE = "user_mobile"
     }
 
-    private val prefs: SharedPreferences
-
-    init {
-        val masterKey = MasterKey.Builder(context)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
-
-        prefs = EncryptedSharedPreferences.create(
-            context,
-            PREFS_NAME,
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
+    fun saveTokens(accessToken: String, refreshToken: String, expiresIn: Int = 3600) {
+        val expiryTime = System.currentTimeMillis() + (expiresIn * 1000L)
+        prefs.edit().apply {
+            putString(KEY_ACCESS_TOKEN, accessToken)
+            putString(KEY_REFRESH_TOKEN, refreshToken)
+            putLong(KEY_TOKEN_EXPIRY, expiryTime)
+            apply()
+        }
+        Log.d(TAG, "Tokens saved, expires in ${expiresIn}s")
     }
 
-    /**
-     * Save access token.
-     */
-    fun saveAccessToken(token: String) {
-        prefs.edit().putString(KEY_ACCESS_TOKEN, token).apply()
-        Log.d(TAG, "Access token saved")
-    }
-
-    /**
-     * Get access token.
-     */
     fun getAccessToken(): String? {
         return prefs.getString(KEY_ACCESS_TOKEN, null)
     }
 
-    /**
-     * Save refresh token.
-     */
-    fun saveRefreshToken(token: String) {
-        prefs.edit().putString(KEY_REFRESH_TOKEN, token).apply()
-        Log.d(TAG, "Refresh token saved")
-    }
-
-    /**
-     * Get refresh token.
-     */
     fun getRefreshToken(): String? {
         return prefs.getString(KEY_REFRESH_TOKEN, null)
     }
 
-    /**
-     * Save token expiry timestamp.
-     */
-    fun saveTokenExpiry(expiryTimestamp: Long) {
-        prefs.edit().putLong(KEY_TOKEN_EXPIRY, expiryTimestamp).apply()
+    fun hasValidToken(): Boolean {
+        val token = getAccessToken()
+        val expiry = prefs.getLong(KEY_TOKEN_EXPIRY, 0)
+        val isValid = !token.isNullOrEmpty() && System.currentTimeMillis() < expiry
+        Log.d(TAG, "Token valid: $isValid")
+        return isValid
     }
 
-    /**
-     * Check if token is expired.
-     */
     fun isTokenExpired(): Boolean {
         val expiry = prefs.getLong(KEY_TOKEN_EXPIRY, 0)
-        return System.currentTimeMillis() > expiry
+        return System.currentTimeMillis() >= expiry
     }
 
-    /**
-     * Check if user has valid tokens.
-     */
-    fun hasValidTokens(): Boolean {
-        val accessToken = getAccessToken()
-        return !accessToken.isNullOrBlank() && !isTokenExpired()
+    fun saveUserInfo(userId: String, mobile: String) {
+        prefs.edit().apply {
+            putString(KEY_USER_ID, userId)
+            putString(KEY_MOBILE, mobile)
+            apply()
+        }
     }
 
-    /**
-     * Clear all tokens.
-     */
+    fun getUserId(): String? {
+        return prefs.getString(KEY_USER_ID, null)
+    }
+
+    fun getUserMobile(): String? {
+        return prefs.getString(KEY_MOBILE, null)
+    }
+
     fun clearTokens() {
         prefs.edit().apply {
             remove(KEY_ACCESS_TOKEN)
             remove(KEY_REFRESH_TOKEN)
             remove(KEY_TOKEN_EXPIRY)
+            remove(KEY_USER_ID)
+            remove(KEY_MOBILE)
             apply()
         }
-        Log.d(TAG, "All tokens cleared")
+        Log.d(TAG, "Tokens cleared")
     }
 }

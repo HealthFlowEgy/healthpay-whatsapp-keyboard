@@ -1,355 +1,301 @@
 package tech.healthpay.keyboard.api
 
 import android.util.Log
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
-import tech.healthpay.keyboard.model.OtpRequestResponse
-import tech.healthpay.keyboard.model.OtpVerifyResponse
-import tech.healthpay.keyboard.model.WalletBalance
 import tech.healthpay.keyboard.security.TokenManager
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.io.OutputStreamWriter
-import java.net.HttpURLConnection
-import java.net.URL
+import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 /**
  * HealthPay API Client
  * 
- * Handles all API communication with the HealthPay backend.
+ * v1.2.1 - Complete implementation with robust error handling
  */
-class HealthPayApiClient(
-    private val tokenManager: TokenManager
-) {
+class HealthPayApiClient(private val tokenManager: TokenManager) {
+
     companion object {
         private const val TAG = "HealthPayApiClient"
-        
-        // API Base URLs
-        private const val BASE_URL = "https://api.beta.healthpay.tech"
-        private const val GRAPHQL_URL = "https://sword.beta.healthpay.tech/graphql"
-        
-        // Endpoints
-        private const val ENDPOINT_REQUEST_OTP = "/auth/otp/request"
-        private const val ENDPOINT_VERIFY_OTP = "/auth/otp/verify"
-        private const val ENDPOINT_WALLET_BALANCE = "/wallet/balance"
-        private const val ENDPOINT_SEND_MONEY = "/wallet/send"
-        private const val ENDPOINT_REQUEST_MONEY = "/wallet/request"
-        
-        // Timeouts
-        private const val CONNECT_TIMEOUT = 30000
-        private const val READ_TIMEOUT = 30000
+        private const val BASE_URL = "https://portal.beta.healthpay.tech/api/v1"
+        private const val CONNECT_TIMEOUT = 30L
+        private const val READ_TIMEOUT = 30L
+        private const val WRITE_TIMEOUT = 30L
     }
 
-    /**
-     * Request OTP for phone number verification.
-     */
-    suspend fun requestOtp(phoneNumber: String): Result<OtpRequestResponse> = withContext(Dispatchers.IO) {
-        try {
-            val url = URL("$BASE_URL$ENDPOINT_REQUEST_OTP")
-            val connection = url.openConnection() as HttpURLConnection
+    private val client: OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(CONNECT_TIMEOUT, TimeUnit.SECONDS)
+        .readTimeout(READ_TIMEOUT, TimeUnit.SECONDS)
+        .writeTimeout(WRITE_TIMEOUT, TimeUnit.SECONDS)
+        .addInterceptor { chain ->
+            val original = chain.request()
+            val requestBuilder = original.newBuilder()
+                .header("Content-Type", "application/json")
+                .header("Accept", "application/json")
             
-            connection.apply {
-                requestMethod = "POST"
-                connectTimeout = CONNECT_TIMEOUT
-                readTimeout = READ_TIMEOUT
-                setRequestProperty("Content-Type", "application/json")
-                doOutput = true
+            tokenManager.getAccessToken()?.let { token ->
+                requestBuilder.header("Authorization", "Bearer $token")
             }
-
-            val requestBody = JSONObject().apply {
-                put("phone", normalizePhoneNumber(phoneNumber))
-                put("country_code", "+20")
-            }
-
-            OutputStreamWriter(connection.outputStream).use { writer ->
-                writer.write(requestBody.toString())
-                writer.flush()
-            }
-
-            val responseCode = connection.responseCode
-            Log.d(TAG, "requestOtp response code: $responseCode")
-
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                val response = readResponse(connection)
-                val json = JSONObject(response)
-                
-                Result.success(OtpRequestResponse(
-                    requestId = json.getString("request_id"),
-                    expiresIn = json.optInt("expires_in", 300),
-                    message = json.optString("message", "OTP sent successfully")
-                ))
-            } else {
-                val error = readErrorResponse(connection)
-                Result.failure(Exception("Failed to send OTP: $error"))
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error requesting OTP", e)
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Verify OTP and get access token.
-     */
-    suspend fun verifyOtp(
-        phoneNumber: String,
-        otpCode: String,
-        requestId: String
-    ): Result<OtpVerifyResponse> = withContext(Dispatchers.IO) {
-        try {
-            val url = URL("$BASE_URL$ENDPOINT_VERIFY_OTP")
-            val connection = url.openConnection() as HttpURLConnection
             
-            connection.apply {
-                requestMethod = "POST"
-                connectTimeout = CONNECT_TIMEOUT
-                readTimeout = READ_TIMEOUT
-                setRequestProperty("Content-Type", "application/json")
-                doOutput = true
-            }
-
-            val requestBody = JSONObject().apply {
-                put("phone", normalizePhoneNumber(phoneNumber))
-                put("otp", otpCode)
-                put("request_id", requestId)
-            }
-
-            OutputStreamWriter(connection.outputStream).use { writer ->
-                writer.write(requestBody.toString())
-                writer.flush()
-            }
-
-            val responseCode = connection.responseCode
-            Log.d(TAG, "verifyOtp response code: $responseCode")
-
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                val response = readResponse(connection)
-                val json = JSONObject(response)
-                
-                Result.success(OtpVerifyResponse(
-                    accessToken = json.getString("access_token"),
-                    refreshToken = json.optString("refresh_token", null),
-                    expiresIn = json.optInt("expires_in", 3600),
-                    userId = json.optString("user_id", null)
-                ))
-            } else {
-                val error = readErrorResponse(connection)
-                Result.failure(Exception("OTP verification failed: $error"))
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error verifying OTP", e)
-            Result.failure(e)
+            chain.proceed(requestBuilder.build())
         }
-    }
+        .build()
 
-    /**
-     * Get wallet balance.
-     */
-    suspend fun getWalletBalance(): Result<WalletBalance> = withContext(Dispatchers.IO) {
-        try {
-            val token = tokenManager.getAccessToken()
-            if (token == null) {
-                return@withContext Result.failure(Exception("Not authenticated"))
-            }
+    private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
-            val url = URL("$BASE_URL$ENDPOINT_WALLET_BALANCE")
-            val connection = url.openConnection() as HttpURLConnection
-            
-            connection.apply {
-                requestMethod = "GET"
-                connectTimeout = CONNECT_TIMEOUT
-                readTimeout = READ_TIMEOUT
-                setRequestProperty("Authorization", "Bearer $token")
-                setRequestProperty("Content-Type", "application/json")
-            }
+    // =====================
+    // Authentication APIs
+    // =====================
 
-            val responseCode = connection.responseCode
-            Log.d(TAG, "getWalletBalance response code: $responseCode")
-
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                val response = readResponse(connection)
-                val json = JSONObject(response)
-                
-                Result.success(WalletBalance(
-                    available = json.getDouble("available"),
-                    pending = json.optDouble("pending", 0.0),
-                    currency = json.optString("currency", "EGP")
-                ))
-            } else if (responseCode == HttpURLConnection.HTTP_UNAUTHORIZED) {
-                // Token expired - try to refresh
-                val refreshed = refreshToken()
-                if (refreshed) {
-                    // Retry the request
-                    return@withContext getWalletBalance()
-                }
-                Result.failure(Exception("Session expired. Please login again."))
-            } else {
-                val error = readErrorResponse(connection)
-                Result.failure(Exception("Failed to get balance: $error"))
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error getting wallet balance", e)
-            Result.failure(e)
+    fun requestOtp(mobileNumber: String, callback: ApiCallback<OtpResponse>) {
+        val jsonBody = JSONObject().apply {
+            put("mobile", mobileNumber)
+            put("country_code", "+20")
         }
-    }
 
-    /**
-     * Send money to a phone number.
-     */
-    suspend fun sendMoney(
-        recipientPhone: String,
-        amount: Double,
-        note: String? = null
-    ): Result<TransactionResponse> = withContext(Dispatchers.IO) {
-        try {
-            val token = tokenManager.getAccessToken()
-            if (token == null) {
-                return@withContext Result.failure(Exception("Not authenticated"))
+        val request = Request.Builder()
+            .url("$BASE_URL/auth/otp/request")
+            .post(jsonBody.toString().toRequestBody(jsonMediaType))
+            .build()
+
+        Log.d(TAG, "Requesting OTP for: ${mobileNumber.takeLast(4)}")
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "OTP request network failure", e)
+                callback.onError(parseNetworkError(e))
             }
 
-            val url = URL("$BASE_URL$ENDPOINT_SEND_MONEY")
-            val connection = url.openConnection() as HttpURLConnection
-            
-            connection.apply {
-                requestMethod = "POST"
-                connectTimeout = CONNECT_TIMEOUT
-                readTimeout = READ_TIMEOUT
-                setRequestProperty("Authorization", "Bearer $token")
-                setRequestProperty("Content-Type", "application/json")
-                doOutput = true
-            }
-
-            val requestBody = JSONObject().apply {
-                put("recipient_phone", normalizePhoneNumber(recipientPhone))
-                put("amount", amount)
-                put("currency", "EGP")
-                if (!note.isNullOrBlank()) {
-                    put("note", note)
-                }
-            }
-
-            OutputStreamWriter(connection.outputStream).use { writer ->
-                writer.write(requestBody.toString())
-                writer.flush()
-            }
-
-            val responseCode = connection.responseCode
-            Log.d(TAG, "sendMoney response code: $responseCode")
-
-            if (responseCode == HttpURLConnection.HTTP_OK || responseCode == HttpURLConnection.HTTP_CREATED) {
-                val response = readResponse(connection)
-                val json = JSONObject(response)
-                
-                Result.success(TransactionResponse(
-                    transactionId = json.getString("transaction_id"),
-                    status = json.getString("status"),
-                    amount = json.getDouble("amount"),
-                    currency = json.optString("currency", "EGP"),
-                    reference = json.optString("reference", null)
-                ))
-            } else {
-                val error = readErrorResponse(connection)
-                Result.failure(Exception("Transfer failed: $error"))
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error sending money", e)
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Refresh access token using refresh token.
-     */
-    private suspend fun refreshToken(): Boolean = withContext(Dispatchers.IO) {
-        try {
-            val refreshToken = tokenManager.getRefreshToken()
-            if (refreshToken == null) {
-                return@withContext false
-            }
-
-            val url = URL("$BASE_URL/auth/refresh")
-            val connection = url.openConnection() as HttpURLConnection
-            
-            connection.apply {
-                requestMethod = "POST"
-                connectTimeout = CONNECT_TIMEOUT
-                readTimeout = READ_TIMEOUT
-                setRequestProperty("Content-Type", "application/json")
-                doOutput = true
-            }
-
-            val requestBody = JSONObject().apply {
-                put("refresh_token", refreshToken)
-            }
-
-            OutputStreamWriter(connection.outputStream).use { writer ->
-                writer.write(requestBody.toString())
-                writer.flush()
-            }
-
-            val responseCode = connection.responseCode
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                val response = readResponse(connection)
-                val json = JSONObject(response)
-                
-                tokenManager.saveAccessToken(json.getString("access_token"))
-                json.optString("refresh_token", null)?.let {
-                    tokenManager.saveRefreshToken(it)
-                }
-                true
-            } else {
-                false
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error refreshing token", e)
-            false
-        }
-    }
-
-    private fun normalizePhoneNumber(phone: String): String {
-        var normalized = phone.replace(Regex("[^0-9+]"), "")
-        
-        // Convert Egyptian numbers to international format
-        if (normalized.startsWith("01")) {
-            normalized = "+20" + normalized.substring(1)
-        } else if (normalized.startsWith("1") && normalized.length == 10) {
-            normalized = "+20$normalized"
-        }
-        
-        return normalized
-    }
-
-    private fun readResponse(connection: HttpURLConnection): String {
-        return BufferedReader(InputStreamReader(connection.inputStream)).use { reader ->
-            reader.readText()
-        }
-    }
-
-    private fun readErrorResponse(connection: HttpURLConnection): String {
-        return try {
-            BufferedReader(InputStreamReader(connection.errorStream)).use { reader ->
-                val response = reader.readText()
+            override fun onResponse(call: Call, response: Response) {
                 try {
-                    val json = JSONObject(response)
-                    json.optString("message", json.optString("error", response))
+                    val responseBody = response.body?.string()
+                    Log.d(TAG, "OTP response code: ${response.code}")
+                    
+                    if (response.isSuccessful && responseBody != null) {
+                        val json = JSONObject(responseBody)
+                        callback.onSuccess(OtpResponse(
+                            success = json.optBoolean("success", true),
+                            message = json.optString("message", "OTP sent successfully"),
+                            requestId = json.optString("request_id", ""),
+                            expiresIn = json.optInt("expires_in", 300)
+                        ))
+                    } else {
+                        callback.onError(parseApiError(response.code, responseBody))
+                    }
                 } catch (e: Exception) {
-                    response
+                    Log.e(TAG, "OTP response parsing error", e)
+                    callback.onError(ApiError(ApiErrorCode.PARSE_ERROR, "Failed to process server response", null, e.message))
                 }
             }
-        } catch (e: Exception) {
-            "Unknown error"
+        })
+    }
+
+    fun verifyOtp(mobileNumber: String, otpCode: String, requestId: String, callback: ApiCallback<AuthResponse>) {
+        val jsonBody = JSONObject().apply {
+            put("mobile", mobileNumber)
+            put("otp", otpCode)
+            put("request_id", requestId)
+        }
+
+        val request = Request.Builder()
+            .url("$BASE_URL/auth/otp/verify")
+            .post(jsonBody.toString().toRequestBody(jsonMediaType))
+            .build()
+
+        Log.d(TAG, "Verifying OTP for: ${mobileNumber.takeLast(4)}")
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "OTP verify network failure", e)
+                callback.onError(parseNetworkError(e))
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                try {
+                    val responseBody = response.body?.string()
+                    
+                    if (response.isSuccessful && responseBody != null) {
+                        val json = JSONObject(responseBody)
+                        val authResponse = AuthResponse(
+                            success = true,
+                            accessToken = json.optString("access_token"),
+                            refreshToken = json.optString("refresh_token"),
+                            expiresIn = json.optInt("expires_in", 3600),
+                            userId = json.optString("user_id")
+                        )
+                        tokenManager.saveTokens(authResponse.accessToken, authResponse.refreshToken, authResponse.expiresIn)
+                        callback.onSuccess(authResponse)
+                    } else {
+                        callback.onError(parseApiError(response.code, responseBody))
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "OTP verify parsing error", e)
+                    callback.onError(ApiError(ApiErrorCode.PARSE_ERROR, "Failed to process verification response", null, e.message))
+                }
+            }
+        })
+    }
+
+    // =====================
+    // Wallet APIs
+    // =====================
+
+    fun getWalletBalance(callback: ApiCallback<WalletBalance>) {
+        val request = Request.Builder()
+            .url("$BASE_URL/wallet/balance")
+            .get()
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                callback.onError(parseNetworkError(e))
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                try {
+                    val responseBody = response.body?.string()
+                    if (response.isSuccessful && responseBody != null) {
+                        val json = JSONObject(responseBody)
+                        callback.onSuccess(WalletBalance(
+                            balance = json.optDouble("balance", 0.0),
+                            currency = json.optString("currency", "EGP"),
+                            lastUpdated = json.optString("last_updated", "")
+                        ))
+                    } else {
+                        callback.onError(parseApiError(response.code, responseBody))
+                    }
+                } catch (e: Exception) {
+                    callback.onError(ApiError(ApiErrorCode.PARSE_ERROR, "Failed to parse balance", null, e.message))
+                }
+            }
+        })
+    }
+
+    fun initiateTransfer(recipientMobile: String, amount: Double, note: String?, callback: ApiCallback<TransferResponse>) {
+        val jsonBody = JSONObject().apply {
+            put("recipient_mobile", recipientMobile)
+            put("amount", amount)
+            put("currency", "EGP")
+            note?.let { put("note", it) }
+        }
+
+        val request = Request.Builder()
+            .url("$BASE_URL/wallet/transfer")
+            .post(jsonBody.toString().toRequestBody(jsonMediaType))
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                callback.onError(parseNetworkError(e))
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                try {
+                    val responseBody = response.body?.string()
+                    if (response.isSuccessful && responseBody != null) {
+                        val json = JSONObject(responseBody)
+                        callback.onSuccess(TransferResponse(
+                            success = true,
+                            transactionId = json.optString("transaction_id"),
+                            status = json.optString("status", "pending"),
+                            message = json.optString("message", "Transfer initiated")
+                        ))
+                    } else {
+                        callback.onError(parseApiError(response.code, responseBody))
+                    }
+                } catch (e: Exception) {
+                    callback.onError(ApiError(ApiErrorCode.PARSE_ERROR, "Failed to process transfer", null, e.message))
+                }
+            }
+        })
+    }
+
+    // =====================
+    // Error Handling
+    // =====================
+
+    private fun parseNetworkError(e: IOException): ApiError {
+        return when {
+            e.message?.contains("timeout", ignoreCase = true) == true -> 
+                ApiError(ApiErrorCode.TIMEOUT, "Connection timed out. Please check your internet and try again.", null, e.message)
+            e.message?.contains("Unable to resolve host", ignoreCase = true) == true -> 
+                ApiError(ApiErrorCode.NO_INTERNET, "No internet connection. Please check your network settings.", null, e.message)
+            e.message?.contains("Connection refused", ignoreCase = true) == true -> 
+                ApiError(ApiErrorCode.SERVER_UNREACHABLE, "Unable to reach server. Please try again later.", null, e.message)
+            else -> 
+                ApiError(ApiErrorCode.NETWORK_ERROR, "Network error occurred. Please try again.", null, e.message)
         }
     }
 
-    /**
-     * Transaction response data class.
-     */
-    data class TransactionResponse(
-        val transactionId: String,
-        val status: String,
-        val amount: Double,
-        val currency: String,
-        val reference: String?
-    )
+    private fun parseApiError(statusCode: Int, responseBody: String?): ApiError {
+        val serverMessage = try {
+            responseBody?.let { JSONObject(it).optString("message") ?: JSONObject(it).optString("error") }
+        } catch (e: Exception) { null }
+
+        return when (statusCode) {
+            400 -> ApiError(ApiErrorCode.BAD_REQUEST, serverMessage ?: "Invalid request. Please check your input.", statusCode)
+            401 -> ApiError(ApiErrorCode.UNAUTHORIZED, serverMessage ?: "Session expired. Please login again.", statusCode)
+            403 -> ApiError(ApiErrorCode.FORBIDDEN, serverMessage ?: "You don't have permission for this action.", statusCode)
+            404 -> ApiError(ApiErrorCode.NOT_FOUND, serverMessage ?: "Service not found.", statusCode)
+            422 -> ApiError(ApiErrorCode.VALIDATION_ERROR, serverMessage ?: "Invalid mobile number format.", statusCode)
+            429 -> ApiError(ApiErrorCode.RATE_LIMITED, serverMessage ?: "Too many requests. Please wait a moment.", statusCode)
+            in 500..599 -> ApiError(ApiErrorCode.SERVER_ERROR, serverMessage ?: "Server error. Please try again later.", statusCode)
+            else -> ApiError(ApiErrorCode.UNKNOWN, serverMessage ?: "An unexpected error occurred.", statusCode)
+        }
+    }
+}
+
+// =====================
+// Response Models
+// =====================
+
+data class OtpResponse(
+    val success: Boolean,
+    val message: String,
+    val requestId: String,
+    val expiresIn: Int
+)
+
+data class AuthResponse(
+    val success: Boolean,
+    val accessToken: String,
+    val refreshToken: String,
+    val expiresIn: Int,
+    val userId: String
+)
+
+data class WalletBalance(
+    val balance: Double,
+    val currency: String,
+    val lastUpdated: String
+)
+
+data class TransferResponse(
+    val success: Boolean,
+    val transactionId: String,
+    val status: String,
+    val message: String
+)
+
+// =====================
+// Error Models
+// =====================
+
+enum class ApiErrorCode {
+    NO_INTERNET, TIMEOUT, NETWORK_ERROR, SERVER_UNREACHABLE,
+    BAD_REQUEST, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, VALIDATION_ERROR, RATE_LIMITED, SERVER_ERROR,
+    PARSE_ERROR, UNKNOWN
+}
+
+data class ApiError(
+    val code: ApiErrorCode,
+    val message: String,
+    val httpCode: Int? = null,
+    val details: String? = null
+)
+
+interface ApiCallback<T> {
+    fun onSuccess(response: T)
+    fun onError(error: ApiError)
 }

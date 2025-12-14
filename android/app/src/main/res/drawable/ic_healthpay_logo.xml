@@ -4,12 +4,13 @@
     android:height="120dp"
     android:viewportWidth="120"
     android:viewportHeight="120">
-    <!-- Background circle -->
     <path
-        android:fillColor="@color/healthpay_primary"
-        android:pathData="M60,10 A50,50 0 1,1 60,110 A50,50 0 1,1 60,10" />
-    <!-- Plus/Cross symbol -->
+        android:fillColor="#1A73E8"
+        android:pathData="M60,60m-55,0a55,55 0,1 1,110 0a55,55 0,1 1,-110 0"/>
     <path
-        android:fillColor="@color/white"
-        android:pathData="M52,35 h16 v17 h17 v16 h-17 v17 h-16 v-17 h-17 v-16 h17 z" />
+        android:fillColor="#FFFFFF"
+        android:pathData="M50,35h20v15h15v20h-15v15h-20v-15h-15v-20h15z"/>
+    <path
+        android:fillColor="#34A853"
+        android:pathData="M75,70l10,-10l5,5l-15,15l-10,-10l5,-5z"/>
 </vector>

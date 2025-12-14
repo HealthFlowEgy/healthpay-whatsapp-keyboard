@@ -3,11 +3,12 @@ package tech.healthpay.keyboard.security
 import android.content.Context
 import android.util.Log
 import androidx.biometric.BiometricManager
-import androidx.biometric.BiometricManager.Authenticators
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 
 /**
- * BiometricHelper provides utilities for checking biometric availability
- * and capabilities.
+ * Biometric Helper - Handles biometric authentication
  */
 class BiometricHelper(private val context: Context) {
 
@@ -15,71 +16,91 @@ class BiometricHelper(private val context: Context) {
         private const val TAG = "BiometricHelper"
     }
 
-    private val biometricManager: BiometricManager = BiometricManager.from(context)
+    private val biometricManager = BiometricManager.from(context)
 
-    /**
-     * Check if biometric authentication is available on this device.
-     */
-    fun isBiometricAvailable(): Boolean {
-        return when (biometricManager.canAuthenticate(
-            Authenticators.BIOMETRIC_STRONG or Authenticators.BIOMETRIC_WEAK
-        )) {
-            BiometricManager.BIOMETRIC_SUCCESS -> true
-            else -> false
+    fun canAuthenticate(): Boolean {
+        return when (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)) {
+            BiometricManager.BIOMETRIC_SUCCESS -> {
+                Log.d(TAG, "Biometric authentication available")
+                true
+            }
+            BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE -> {
+                Log.d(TAG, "No biometric hardware")
+                false
+            }
+            BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> {
+                Log.d(TAG, "Biometric hardware unavailable")
+                false
+            }
+            BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> {
+                Log.d(TAG, "No biometrics enrolled")
+                false
+            }
+            else -> {
+                Log.d(TAG, "Biometric status unknown")
+                false
+            }
         }
     }
 
-    /**
-     * Get the biometric availability status.
-     */
+    fun authenticate(
+        activity: FragmentActivity,
+        title: String = "Authenticate",
+        subtitle: String = "Use your fingerprint to continue",
+        negativeButtonText: String = "Cancel",
+        onSuccess: () -> Unit,
+        onError: (Int, String) -> Unit,
+        onFailed: () -> Unit
+    ) {
+        val executor = ContextCompat.getMainExecutor(context)
+
+        val callback = object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                super.onAuthenticationSucceeded(result)
+                Log.d(TAG, "Authentication succeeded")
+                onSuccess()
+            }
+
+            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                super.onAuthenticationError(errorCode, errString)
+                Log.e(TAG, "Authentication error: $errorCode - $errString")
+                onError(errorCode, errString.toString())
+            }
+
+            override fun onAuthenticationFailed() {
+                super.onAuthenticationFailed()
+                Log.w(TAG, "Authentication failed")
+                onFailed()
+            }
+        }
+
+        val biometricPrompt = BiometricPrompt(activity, executor, callback)
+
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle(title)
+            .setSubtitle(subtitle)
+            .setNegativeButtonText(negativeButtonText)
+            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+            .build()
+
+        biometricPrompt.authenticate(promptInfo)
+    }
+
     fun getBiometricStatus(): BiometricStatus {
-        return when (biometricManager.canAuthenticate(
-            Authenticators.BIOMETRIC_STRONG or Authenticators.BIOMETRIC_WEAK
-        )) {
+        return when (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)) {
             BiometricManager.BIOMETRIC_SUCCESS -> BiometricStatus.AVAILABLE
             BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE -> BiometricStatus.NO_HARDWARE
-            BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> BiometricStatus.HARDWARE_UNAVAILABLE
+            BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> BiometricStatus.UNAVAILABLE
             BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> BiometricStatus.NOT_ENROLLED
-            BiometricManager.BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED -> BiometricStatus.SECURITY_UPDATE_REQUIRED
-            BiometricManager.BIOMETRIC_ERROR_UNSUPPORTED -> BiometricStatus.UNSUPPORTED
-            BiometricManager.BIOMETRIC_STATUS_UNKNOWN -> BiometricStatus.UNKNOWN
             else -> BiometricStatus.UNKNOWN
         }
     }
 
-    /**
-     * Get a user-friendly message for the biometric status.
-     */
-    fun getBiometricStatusMessage(): String {
-        return when (getBiometricStatus()) {
-            BiometricStatus.AVAILABLE -> "Biometric authentication is available"
-            BiometricStatus.NO_HARDWARE -> "This device doesn't have biometric hardware"
-            BiometricStatus.HARDWARE_UNAVAILABLE -> "Biometric hardware is currently unavailable"
-            BiometricStatus.NOT_ENROLLED -> "No biometric credentials are enrolled. Please set up fingerprint or face recognition in device settings."
-            BiometricStatus.SECURITY_UPDATE_REQUIRED -> "A security update is required"
-            BiometricStatus.UNSUPPORTED -> "Biometric authentication is not supported"
-            BiometricStatus.UNKNOWN -> "Biometric status unknown"
-        }
-    }
-
-    /**
-     * Check if device has strong biometric capability.
-     */
-    fun hasStrongBiometric(): Boolean {
-        return biometricManager.canAuthenticate(Authenticators.BIOMETRIC_STRONG) == 
-            BiometricManager.BIOMETRIC_SUCCESS
-    }
-
-    /**
-     * Biometric availability status.
-     */
     enum class BiometricStatus {
         AVAILABLE,
         NO_HARDWARE,
-        HARDWARE_UNAVAILABLE,
+        UNAVAILABLE,
         NOT_ENROLLED,
-        SECURITY_UPDATE_REQUIRED,
-        UNSUPPORTED,
         UNKNOWN
     }
 }
