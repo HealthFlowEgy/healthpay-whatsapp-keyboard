@@ -4,10 +4,12 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- H shape for HealthPay -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M44,31h20v15h15v20h-15v15h-20v-15h-15v-20h15z"/>
+        android:pathData="M35,30 L35,78 L45,78 L45,58 L63,58 L63,78 L73,78 L73,30 L63,30 L63,48 L45,48 L45,30 Z"/>
+    <!-- P accent -->
     <path
-        android:fillColor="#34A853"
-        android:pathData="M69,66l10,-10l5,5l-15,15l-10,-10l5,-5z"/>
+        android:fillColor="#E8F4F8"
+        android:pathData="M60,62 L60,78 L70,78 L70,70 Q75,70 75,66 Q75,62 70,62 Z"/>
 </vector>

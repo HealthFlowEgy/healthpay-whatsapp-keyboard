@@ -4,7 +4,7 @@
     <string name="app_name">HealthPay Keyboard</string>
     <string name="app_description">Secure payment keyboard for HealthPay wallet</string>
     
-    <!-- Keyboard Labels (Bug #3 Fix - Unique labels for each subtype) -->
+    <!-- Keyboard Labels (Bug #3 Fix) -->
     <string name="keyboard_label_en">HealthPay (English)</string>
     <string name="keyboard_label_ar">HealthPay (العربية)</string>
     
@@ -31,13 +31,22 @@
     <string name="status_otp_sent">OTP sent successfully</string>
     <string name="status_login_success">Login successful!</string>
     
-    <!-- Error Messages -->
+    <!-- Error Messages - Basic -->
     <string name="error_invalid_mobile">Please enter a valid Egyptian mobile number</string>
     <string name="error_invalid_otp">Invalid OTP. Please try again.</string>
     <string name="error_otp_expired">OTP has expired. Please request a new one.</string>
     <string name="error_network">Network error. Please check your connection.</string>
     <string name="error_server">Server error. Please try again later.</string>
     <string name="error_too_many_attempts">Too many attempts. Please wait before trying again.</string>
+    
+    <!-- Error Messages - Detailed (v1.2.2) -->
+    <string name="error_timeout_title">Connection Timeout</string>
+    <string name="error_timeout_message">The server is taking too long to respond. Please check your internet connection and try again.</string>
+    <string name="error_no_internet_title">No Internet Connection</string>
+    <string name="error_no_internet_message">Please check your network settings and try again.</string>
+    <string name="error_server_title">Server Error</string>
+    <string name="error_server_message">We\'re having trouble connecting to our servers. Please try again in a few moments.</string>
+    <string name="error_rate_limited_title">Too Many Requests</string>
     
     <!-- Timer -->
     <string name="timer_resend_otp">Resend OTP in %1$ds</string>

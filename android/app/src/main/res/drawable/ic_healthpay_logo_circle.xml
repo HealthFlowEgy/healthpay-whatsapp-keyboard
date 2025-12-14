@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    
+    <!-- Teal circle background -->
+    <path
+        android:fillColor="#2A9D8F"
+        android:pathData="M60,60m-55,0a55,55 0,1 1,110 0a55,55 0,1 1,-110 0"/>
+    
+    <!-- White H letter stylized -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M35,35 L35,85 L45,85 L45,65 L75,65 L75,85 L85,85 L85,35 L75,35 L75,55 L45,55 L45,35 Z"/>
+    
+    <!-- Small P accent -->
+    <path
+        android:fillColor="#E8F4F8"
+        android:pathData="M70,70 L70,85 L80,85 L80,78 Q85,78 85,73 Q85,70 80,70 Z"/>
+</vector>

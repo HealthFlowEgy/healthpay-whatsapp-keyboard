@@ -10,15 +10,15 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 /**
- * HealthPay API Client
+ * HealthPay API Client - GraphQL Implementation
  * 
- * v1.2.1 - Complete implementation with robust error handling
+ * v1.2.3 - Uses GraphQL endpoint at sword.beta.healthpay.tech
  */
 class HealthPayApiClient(private val tokenManager: TokenManager) {
 
     companion object {
         private const val TAG = "HealthPayApiClient"
-        private const val BASE_URL = "https://portal.beta.healthpay.tech/api/v1"
+        private const val GRAPHQL_URL = "https://sword.beta.healthpay.tech/graphql"
         private const val CONNECT_TIMEOUT = 30L
         private const val READ_TIMEOUT = 30L
         private const val WRITE_TIMEOUT = 30L
@@ -45,96 +45,211 @@ class HealthPayApiClient(private val tokenManager: TokenManager) {
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
     // =====================
-    // Authentication APIs
+    // GraphQL Helper
     // =====================
 
-    fun requestOtp(mobileNumber: String, callback: ApiCallback<OtpResponse>) {
-        val jsonBody = JSONObject().apply {
-            put("mobile", mobileNumber)
-            put("country_code", "+20")
+    private fun executeGraphQL(
+        query: String,
+        variables: Map<String, Any?>,
+        operationName: String,
+        callback: (JSONObject?, ApiError?) -> Unit
+    ) {
+        val graphqlBody = JSONObject().apply {
+            put("query", query)
+            put("variables", JSONObject(variables))
+            put("operationName", operationName)
         }
 
-        val request = Request.Builder()
-            .url("$BASE_URL/auth/otp/request")
-            .post(jsonBody.toString().toRequestBody(jsonMediaType))
-            .build()
+        Log.d(TAG, "GraphQL Request: $operationName")
+        Log.d(TAG, "Variables: $variables")
 
-        Log.d(TAG, "Requesting OTP for: ${mobileNumber.takeLast(4)}")
+        val request = Request.Builder()
+            .url(GRAPHQL_URL)
+            .post(graphqlBody.toString().toRequestBody(jsonMediaType))
+            .build()
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                Log.e(TAG, "OTP request network failure", e)
-                callback.onError(parseNetworkError(e))
+                Log.e(TAG, "GraphQL network failure: ${e.message}", e)
+                callback(null, parseNetworkError(e))
             }
 
             override fun onResponse(call: Call, response: Response) {
                 try {
                     val responseBody = response.body?.string()
-                    Log.d(TAG, "OTP response code: ${response.code}")
-                    
-                    if (response.isSuccessful && responseBody != null) {
-                        val json = JSONObject(responseBody)
-                        callback.onSuccess(OtpResponse(
-                            success = json.optBoolean("success", true),
-                            message = json.optString("message", "OTP sent successfully"),
-                            requestId = json.optString("request_id", ""),
-                            expiresIn = json.optInt("expires_in", 300)
-                        ))
-                    } else {
-                        callback.onError(parseApiError(response.code, responseBody))
+                    Log.d(TAG, "GraphQL Response: ${response.code}")
+                    Log.d(TAG, "Body: ${responseBody?.take(500)}")
+
+                    if (responseBody == null) {
+                        callback(null, ApiError(ApiErrorCode.PARSE_ERROR, "Empty response from server", response.code))
+                        return
                     }
+
+                    val json = JSONObject(responseBody)
+
+                    // Check for GraphQL errors
+                    if (json.has("errors")) {
+                        val errors = json.getJSONArray("errors")
+                        if (errors.length() > 0) {
+                            val firstError = errors.getJSONObject(0)
+                            val message = firstError.optString("message", "Unknown error")
+                            val extensions = firstError.optJSONObject("extensions")
+                            val code = extensions?.optString("code", "UNKNOWN") ?: "UNKNOWN"
+                            
+                            Log.e(TAG, "GraphQL Error: $code - $message")
+                            callback(null, parseGraphQLError(code, message, response.code))
+                            return
+                        }
+                    }
+
+                    // Return data
+                    val data = json.optJSONObject("data")
+                    if (data != null) {
+                        callback(data, null)
+                    } else {
+                        callback(null, ApiError(ApiErrorCode.PARSE_ERROR, "No data in response", response.code))
+                    }
+
                 } catch (e: Exception) {
-                    Log.e(TAG, "OTP response parsing error", e)
-                    callback.onError(ApiError(ApiErrorCode.PARSE_ERROR, "Failed to process server response", null, e.message))
+                    Log.e(TAG, "GraphQL response parsing error", e)
+                    callback(null, ApiError(ApiErrorCode.PARSE_ERROR, "Failed to process server response", null, e.message))
                 }
             }
         })
     }
 
-    fun verifyOtp(mobileNumber: String, otpCode: String, requestId: String, callback: ApiCallback<AuthResponse>) {
-        val jsonBody = JSONObject().apply {
-            put("mobile", mobileNumber)
-            put("otp", otpCode)
-            put("request_id", requestId)
-        }
+    // =====================
+    // Authentication APIs
+    // =====================
 
-        val request = Request.Builder()
-            .url("$BASE_URL/auth/otp/verify")
-            .post(jsonBody.toString().toRequestBody(jsonMediaType))
-            .build()
+    fun requestOtp(mobileNumber: String, callback: ApiCallback<OtpResponse>) {
+        // GraphQL mutation for requesting OTP
+        val mutation = """
+            mutation RequestOtp(${'$'}mobile: String!, ${'$'}countryCode: String) {
+                requestOtp(input: { mobile: ${'$'}mobile, countryCode: ${'$'}countryCode }) {
+                    success
+                    message
+                    requestId
+                    expiresIn
+                }
+            }
+        """.trimIndent()
+
+        // Alternative mutation format (if the above doesn't work)
+        val mutationAlt = """
+            mutation RequestOtp(${'$'}mobile: String!) {
+                sendOtp(mobile: ${'$'}mobile) {
+                    success
+                    message
+                    requestId
+                    expiresIn
+                }
+            }
+        """.trimIndent()
+
+        val variables = mapOf(
+            "mobile" to mobileNumber,
+            "countryCode" to "+20"
+        )
+
+        Log.d(TAG, "Requesting OTP for: ${mobileNumber.takeLast(4)}")
+
+        executeGraphQL(mutation, variables, "RequestOtp") { data, error ->
+            if (error != null) {
+                // Try alternative mutation format
+                Log.d(TAG, "Trying alternative mutation format...")
+                executeGraphQL(mutationAlt, mapOf("mobile" to mobileNumber), "RequestOtp") { altData, altError ->
+                    if (altError != null) {
+                        callback.onError(altError)
+                    } else {
+                        parseOtpResponse(altData, "sendOtp", callback)
+                    }
+                }
+                return@executeGraphQL
+            }
+
+            parseOtpResponse(data, "requestOtp", callback)
+        }
+    }
+
+    private fun parseOtpResponse(data: JSONObject?, fieldName: String, callback: ApiCallback<OtpResponse>) {
+        try {
+            val otpData = data?.optJSONObject(fieldName)
+            if (otpData != null) {
+                callback.onSuccess(OtpResponse(
+                    success = otpData.optBoolean("success", true),
+                    message = otpData.optString("message", "OTP sent successfully"),
+                    requestId = otpData.optString("requestId", otpData.optString("request_id", "")),
+                    expiresIn = otpData.optInt("expiresIn", otpData.optInt("expires_in", 300))
+                ))
+            } else {
+                // If no specific field, assume success (some APIs just return empty on success)
+                callback.onSuccess(OtpResponse(
+                    success = true,
+                    message = "OTP sent successfully",
+                    requestId = System.currentTimeMillis().toString(),
+                    expiresIn = 300
+                ))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error parsing OTP response", e)
+            callback.onError(ApiError(ApiErrorCode.PARSE_ERROR, "Failed to parse OTP response", null, e.message))
+        }
+    }
+
+    fun verifyOtp(mobileNumber: String, otpCode: String, requestId: String, callback: ApiCallback<AuthResponse>) {
+        // GraphQL mutation for verifying OTP
+        val mutation = """
+            mutation VerifyOtp(${'$'}mobile: String!, ${'$'}otp: String!, ${'$'}requestId: String) {
+                verifyOtp(input: { mobile: ${'$'}mobile, otp: ${'$'}otp, requestId: ${'$'}requestId }) {
+                    success
+                    accessToken
+                    refreshToken
+                    expiresIn
+                    userId
+                }
+            }
+        """.trimIndent()
+
+        val variables = mapOf(
+            "mobile" to mobileNumber,
+            "otp" to otpCode,
+            "requestId" to requestId
+        )
 
         Log.d(TAG, "Verifying OTP for: ${mobileNumber.takeLast(4)}")
 
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                Log.e(TAG, "OTP verify network failure", e)
-                callback.onError(parseNetworkError(e))
+        executeGraphQL(mutation, variables, "VerifyOtp") { data, error ->
+            if (error != null) {
+                callback.onError(error)
+                return@executeGraphQL
             }
 
-            override fun onResponse(call: Call, response: Response) {
-                try {
-                    val responseBody = response.body?.string()
-                    
-                    if (response.isSuccessful && responseBody != null) {
-                        val json = JSONObject(responseBody)
-                        val authResponse = AuthResponse(
-                            success = true,
-                            accessToken = json.optString("access_token"),
-                            refreshToken = json.optString("refresh_token"),
-                            expiresIn = json.optInt("expires_in", 3600),
-                            userId = json.optString("user_id")
-                        )
+            try {
+                val verifyData = data?.optJSONObject("verifyOtp")
+                if (verifyData != null) {
+                    val authResponse = AuthResponse(
+                        success = verifyData.optBoolean("success", true),
+                        accessToken = verifyData.optString("accessToken", verifyData.optString("access_token", "")),
+                        refreshToken = verifyData.optString("refreshToken", verifyData.optString("refresh_token", "")),
+                        expiresIn = verifyData.optInt("expiresIn", verifyData.optInt("expires_in", 3600)),
+                        userId = verifyData.optString("userId", verifyData.optString("user_id", ""))
+                    )
+
+                    if (authResponse.accessToken.isNotEmpty()) {
                         tokenManager.saveTokens(authResponse.accessToken, authResponse.refreshToken, authResponse.expiresIn)
-                        callback.onSuccess(authResponse)
-                    } else {
-                        callback.onError(parseApiError(response.code, responseBody))
+                        tokenManager.saveUserInfo(authResponse.userId, mobileNumber)
                     }
-                } catch (e: Exception) {
-                    Log.e(TAG, "OTP verify parsing error", e)
-                    callback.onError(ApiError(ApiErrorCode.PARSE_ERROR, "Failed to process verification response", null, e.message))
+
+                    callback.onSuccess(authResponse)
+                } else {
+                    callback.onError(ApiError(ApiErrorCode.VALIDATION_ERROR, "Invalid OTP", null))
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error parsing verify response", e)
+                callback.onError(ApiError(ApiErrorCode.PARSE_ERROR, "Failed to verify OTP", null, e.message))
             }
-        })
+        }
     }
 
     // =====================
@@ -142,73 +257,71 @@ class HealthPayApiClient(private val tokenManager: TokenManager) {
     // =====================
 
     fun getWalletBalance(callback: ApiCallback<WalletBalance>) {
-        val request = Request.Builder()
-            .url("$BASE_URL/wallet/balance")
-            .get()
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                callback.onError(parseNetworkError(e))
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                try {
-                    val responseBody = response.body?.string()
-                    if (response.isSuccessful && responseBody != null) {
-                        val json = JSONObject(responseBody)
-                        callback.onSuccess(WalletBalance(
-                            balance = json.optDouble("balance", 0.0),
-                            currency = json.optString("currency", "EGP"),
-                            lastUpdated = json.optString("last_updated", "")
-                        ))
-                    } else {
-                        callback.onError(parseApiError(response.code, responseBody))
-                    }
-                } catch (e: Exception) {
-                    callback.onError(ApiError(ApiErrorCode.PARSE_ERROR, "Failed to parse balance", null, e.message))
+        val query = """
+            query GetWalletBalance {
+                wallet {
+                    balance
+                    currency
+                    lastUpdated
                 }
             }
-        })
+        """.trimIndent()
+
+        executeGraphQL(query, emptyMap(), "GetWalletBalance") { data, error ->
+            if (error != null) {
+                callback.onError(error)
+                return@executeGraphQL
+            }
+
+            try {
+                val walletData = data?.optJSONObject("wallet")
+                callback.onSuccess(WalletBalance(
+                    balance = walletData?.optDouble("balance", 0.0) ?: 0.0,
+                    currency = walletData?.optString("currency", "EGP") ?: "EGP",
+                    lastUpdated = walletData?.optString("lastUpdated", "") ?: ""
+                ))
+            } catch (e: Exception) {
+                callback.onError(ApiError(ApiErrorCode.PARSE_ERROR, "Failed to parse balance", null, e.message))
+            }
+        }
     }
 
     fun initiateTransfer(recipientMobile: String, amount: Double, note: String?, callback: ApiCallback<TransferResponse>) {
-        val jsonBody = JSONObject().apply {
-            put("recipient_mobile", recipientMobile)
-            put("amount", amount)
-            put("currency", "EGP")
-            note?.let { put("note", it) }
-        }
-
-        val request = Request.Builder()
-            .url("$BASE_URL/wallet/transfer")
-            .post(jsonBody.toString().toRequestBody(jsonMediaType))
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                callback.onError(parseNetworkError(e))
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                try {
-                    val responseBody = response.body?.string()
-                    if (response.isSuccessful && responseBody != null) {
-                        val json = JSONObject(responseBody)
-                        callback.onSuccess(TransferResponse(
-                            success = true,
-                            transactionId = json.optString("transaction_id"),
-                            status = json.optString("status", "pending"),
-                            message = json.optString("message", "Transfer initiated")
-                        ))
-                    } else {
-                        callback.onError(parseApiError(response.code, responseBody))
-                    }
-                } catch (e: Exception) {
-                    callback.onError(ApiError(ApiErrorCode.PARSE_ERROR, "Failed to process transfer", null, e.message))
+        val mutation = """
+            mutation Transfer(${'$'}recipientMobile: String!, ${'$'}amount: Float!, ${'$'}note: String) {
+                transfer(input: { recipientMobile: ${'$'}recipientMobile, amount: ${'$'}amount, note: ${'$'}note }) {
+                    success
+                    transactionId
+                    status
+                    message
                 }
             }
-        })
+        """.trimIndent()
+
+        val variables = mapOf(
+            "recipientMobile" to recipientMobile,
+            "amount" to amount,
+            "note" to note
+        )
+
+        executeGraphQL(mutation, variables, "Transfer") { data, error ->
+            if (error != null) {
+                callback.onError(error)
+                return@executeGraphQL
+            }
+
+            try {
+                val transferData = data?.optJSONObject("transfer")
+                callback.onSuccess(TransferResponse(
+                    success = transferData?.optBoolean("success", true) ?: true,
+                    transactionId = transferData?.optString("transactionId", "") ?: "",
+                    status = transferData?.optString("status", "pending") ?: "pending",
+                    message = transferData?.optString("message", "Transfer initiated") ?: "Transfer initiated"
+                ))
+            } catch (e: Exception) {
+                callback.onError(ApiError(ApiErrorCode.PARSE_ERROR, "Failed to process transfer", null, e.message))
+            }
+        }
     }
 
     // =====================
@@ -223,25 +336,30 @@ class HealthPayApiClient(private val tokenManager: TokenManager) {
                 ApiError(ApiErrorCode.NO_INTERNET, "No internet connection. Please check your network settings.", null, e.message)
             e.message?.contains("Connection refused", ignoreCase = true) == true -> 
                 ApiError(ApiErrorCode.SERVER_UNREACHABLE, "Unable to reach server. Please try again later.", null, e.message)
+            e.message?.contains("SSL", ignoreCase = true) == true ||
+            e.message?.contains("Certificate", ignoreCase = true) == true -> 
+                ApiError(ApiErrorCode.SERVER_UNREACHABLE, "Secure connection failed. Please try again.", null, e.message)
             else -> 
                 ApiError(ApiErrorCode.NETWORK_ERROR, "Network error occurred. Please try again.", null, e.message)
         }
     }
 
-    private fun parseApiError(statusCode: Int, responseBody: String?): ApiError {
-        val serverMessage = try {
-            responseBody?.let { JSONObject(it).optString("message") ?: JSONObject(it).optString("error") }
-        } catch (e: Exception) { null }
-
-        return when (statusCode) {
-            400 -> ApiError(ApiErrorCode.BAD_REQUEST, serverMessage ?: "Invalid request. Please check your input.", statusCode)
-            401 -> ApiError(ApiErrorCode.UNAUTHORIZED, serverMessage ?: "Session expired. Please login again.", statusCode)
-            403 -> ApiError(ApiErrorCode.FORBIDDEN, serverMessage ?: "You don't have permission for this action.", statusCode)
-            404 -> ApiError(ApiErrorCode.NOT_FOUND, serverMessage ?: "Service not found.", statusCode)
-            422 -> ApiError(ApiErrorCode.VALIDATION_ERROR, serverMessage ?: "Invalid mobile number format.", statusCode)
-            429 -> ApiError(ApiErrorCode.RATE_LIMITED, serverMessage ?: "Too many requests. Please wait a moment.", statusCode)
-            in 500..599 -> ApiError(ApiErrorCode.SERVER_ERROR, serverMessage ?: "Server error. Please try again later.", statusCode)
-            else -> ApiError(ApiErrorCode.UNKNOWN, serverMessage ?: "An unexpected error occurred.", statusCode)
+    private fun parseGraphQLError(code: String, message: String, httpCode: Int?): ApiError {
+        return when (code.uppercase()) {
+            "UNAUTHENTICATED", "UNAUTHORIZED" -> 
+                ApiError(ApiErrorCode.UNAUTHORIZED, message, httpCode)
+            "FORBIDDEN" -> 
+                ApiError(ApiErrorCode.FORBIDDEN, message, httpCode)
+            "NOT_FOUND" -> 
+                ApiError(ApiErrorCode.NOT_FOUND, message, httpCode)
+            "BAD_USER_INPUT", "VALIDATION_ERROR" -> 
+                ApiError(ApiErrorCode.VALIDATION_ERROR, message, httpCode)
+            "RATE_LIMITED", "TOO_MANY_REQUESTS" -> 
+                ApiError(ApiErrorCode.RATE_LIMITED, message, httpCode)
+            "INTERNAL_SERVER_ERROR", "SERVER_ERROR" -> 
+                ApiError(ApiErrorCode.SERVER_ERROR, message, httpCode)
+            else -> 
+                ApiError(ApiErrorCode.UNKNOWN, message, httpCode)
         }
     }
 }

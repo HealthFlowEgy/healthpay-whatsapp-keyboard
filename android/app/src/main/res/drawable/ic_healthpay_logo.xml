@@ -1,16 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="120dp"
-    android:height="120dp"
-    android:viewportWidth="120"
-    android:viewportHeight="120">
+    android:width="200dp"
+    android:height="100dp"
+    android:viewportWidth="200"
+    android:viewportHeight="100">
+    
+    <!-- Teal trapezoid background -->
     <path
-        android:fillColor="#1A73E8"
-        android:pathData="M60,60m-55,0a55,55 0,1 1,110 0a55,55 0,1 1,-110 0"/>
+        android:fillColor="#2A9D8F"
+        android:pathData="M0,10 L120,10 L100,90 L0,90 Z"/>
+    
+    <!-- Light blue background right side -->
+    <path
+        android:fillColor="#E8F4F8"
+        android:pathData="M120,10 L200,10 L200,90 L100,90 Z"/>
+    
+    <!-- "Health" text placeholder - white on teal -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M50,35h20v15h15v20h-15v15h-20v-15h-15v-20h15z"/>
+        android:pathData="M15,45 L15,55 L25,55 L25,65 L35,65 L35,55 L45,55 L45,45 L35,45 L35,35 L25,35 L25,45 Z"/>
+    
+    <!-- "Pay" stylized - teal on light -->
     <path
-        android:fillColor="#34A853"
-        android:pathData="M75,70l10,-10l5,5l-15,15l-10,-10l5,-5z"/>
+        android:fillColor="#2A9D8F"
+        android:pathData="M130,40 Q130,30 140,30 L150,30 Q160,30 160,40 L160,45 Q160,50 150,50 L140,50 L140,70"/>
 </vector>

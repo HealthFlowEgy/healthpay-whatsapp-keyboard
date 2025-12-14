@@ -3,6 +3,8 @@ package tech.healthpay.keyboard.ui
 import android.content.Intent
 import android.os.Bundle
 import android.os.CountDownTimer
+import android.os.Handler
+import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
@@ -21,13 +23,14 @@ import tech.healthpay.keyboard.api.*
 /**
  * Login Activity - Handles OTP-based authentication
  * 
- * v1.2.1 - Complete implementation with proper error handling
+ * v1.2.2 - Added timeout handling to prevent UI from hanging
  */
 class LoginActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "LoginActivity"
         private const val OTP_RESEND_DELAY_MS = 60000L
+        private const val API_TIMEOUT_MS = 30000L // 30 second timeout
     }
 
     // UI Components
@@ -47,12 +50,18 @@ class LoginActivity : AppCompatActivity() {
     private var currentMobile: String = ""
     private var isOtpSent: Boolean = false
     private var resendTimer: CountDownTimer? = null
+    private var apiTimeoutHandler: Handler? = null
+    private var apiTimeoutRunnable: Runnable? = null
+    private var isRequestInProgress = false
 
     private val apiClient: HealthPayApiClient by lazy { HealthPayKeyboardApplication.apiClient }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
+        
+        apiTimeoutHandler = Handler(Looper.getMainLooper())
+        
         initViews()
         setupListeners()
         showMobileInputState()
@@ -61,6 +70,7 @@ class LoginActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         resendTimer?.cancel()
+        cancelApiTimeout()
     }
 
     private fun initViews() {
@@ -81,7 +91,7 @@ class LoginActivity : AppCompatActivity() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: Editable?) {
-                sendOtpButton.isEnabled = isValidMobile(s?.toString() ?: "")
+                sendOtpButton.isEnabled = isValidMobile(s?.toString() ?: "") && !isRequestInProgress
                 mobileInputLayout.error = null
             }
         })
@@ -90,7 +100,7 @@ class LoginActivity : AppCompatActivity() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: Editable?) {
-                verifyOtpButton.isEnabled = (s?.length ?: 0) == 6
+                verifyOtpButton.isEnabled = (s?.length ?: 0) == 6 && !isRequestInProgress
                 otpInputLayout.error = null
             }
         })
@@ -118,13 +128,76 @@ class LoginActivity : AppCompatActivity() {
         return if (mobile.startsWith("01")) "+2$mobile" else mobile
     }
 
+    // =====================
+    // Timeout Management
+    // =====================
+
+    private fun startApiTimeout(operation: String) {
+        cancelApiTimeout()
+        
+        apiTimeoutRunnable = Runnable {
+            if (isRequestInProgress) {
+                Log.e(TAG, "$operation timed out after ${API_TIMEOUT_MS}ms")
+                isRequestInProgress = false
+                runOnUiThread {
+                    hideLoading()
+                    showTimeoutError(operation)
+                }
+            }
+        }
+        
+        apiTimeoutHandler?.postDelayed(apiTimeoutRunnable!!, API_TIMEOUT_MS)
+    }
+
+    private fun cancelApiTimeout() {
+        apiTimeoutRunnable?.let { apiTimeoutHandler?.removeCallbacks(it) }
+        apiTimeoutRunnable = null
+    }
+
+    private fun showTimeoutError(operation: String) {
+        showErrorDialog(
+            title = getString(R.string.error_timeout_title),
+            message = getString(R.string.error_timeout_message),
+            retryAction = {
+                if (operation == "OTP_REQUEST") {
+                    requestOtp(currentMobile)
+                } else {
+                    verifyOtp(otpInput.text?.toString() ?: "")
+                }
+            }
+        )
+        
+        // Re-enable inputs
+        if (!isOtpSent) {
+            mobileInput.isEnabled = true
+            sendOtpButton.isEnabled = isValidMobile(mobileInput.text?.toString() ?: "")
+        } else {
+            otpInput.isEnabled = true
+            verifyOtpButton.isEnabled = (otpInput.text?.length ?: 0) == 6
+            resendOtpButton.isEnabled = true
+        }
+    }
+
+    // =====================
+    // OTP Request
+    // =====================
+
     private fun requestOtp(mobile: String) {
+        if (isRequestInProgress) {
+            Log.w(TAG, "Request already in progress, ignoring")
+            return
+        }
+        
         Log.d(TAG, "Requesting OTP for: ${mobile.takeLast(4)}")
         currentMobile = mobile
+        isRequestInProgress = true
         showLoading(getString(R.string.status_sending_otp))
+        startApiTimeout("OTP_REQUEST")
         
         apiClient.requestOtp(formatMobileForApi(mobile), object : ApiCallback<OtpResponse> {
             override fun onSuccess(response: OtpResponse) {
+                cancelApiTimeout()
+                isRequestInProgress = false
                 runOnUiThread {
                     Log.d(TAG, "OTP sent successfully")
                     currentRequestId = response.requestId
@@ -137,6 +210,8 @@ class LoginActivity : AppCompatActivity() {
             }
 
             override fun onError(error: ApiError) {
+                cancelApiTimeout()
+                isRequestInProgress = false
                 runOnUiThread {
                     Log.e(TAG, "OTP request failed: ${error.code} - ${error.message}")
                     hideLoading()
@@ -148,12 +223,25 @@ class LoginActivity : AppCompatActivity() {
         })
     }
 
+    // =====================
+    // OTP Verification
+    // =====================
+
     private fun verifyOtp(otp: String) {
+        if (isRequestInProgress) {
+            Log.w(TAG, "Request already in progress, ignoring")
+            return
+        }
+        
         Log.d(TAG, "Verifying OTP")
+        isRequestInProgress = true
         showLoading(getString(R.string.status_verifying))
+        startApiTimeout("OTP_VERIFY")
         
         apiClient.verifyOtp(formatMobileForApi(currentMobile), otp, currentRequestId, object : ApiCallback<AuthResponse> {
             override fun onSuccess(response: AuthResponse) {
+                cancelApiTimeout()
+                isRequestInProgress = false
                 runOnUiThread {
                     Log.d(TAG, "OTP verified successfully")
                     hideLoading()
@@ -163,6 +251,8 @@ class LoginActivity : AppCompatActivity() {
             }
 
             override fun onError(error: ApiError) {
+                cancelApiTimeout()
+                isRequestInProgress = false
                 runOnUiThread {
                     Log.e(TAG, "OTP verification failed: ${error.code}")
                     hideLoading()
@@ -170,6 +260,8 @@ class LoginActivity : AppCompatActivity() {
                         ApiErrorCode.UNAUTHORIZED, ApiErrorCode.VALIDATION_ERROR -> {
                             otpInputLayout.error = getString(R.string.error_invalid_otp)
                             otpInput.text?.clear()
+                            otpInput.isEnabled = true
+                            verifyOtpButton.isEnabled = false
                         }
                         else -> showError(error)
                     }
@@ -177,6 +269,10 @@ class LoginActivity : AppCompatActivity() {
             }
         })
     }
+
+    // =====================
+    // UI State Management
+    // =====================
 
     private fun showMobileInputState() {
         mobileInputLayout.visibility = View.VISIBLE
@@ -194,6 +290,7 @@ class LoginActivity : AppCompatActivity() {
         sendOtpButton.visibility = View.GONE
         otpInputLayout.visibility = View.VISIBLE
         otpInput.text?.clear()
+        otpInput.isEnabled = true
         otpInput.requestFocus()
         verifyOtpButton.visibility = View.VISIBLE
         verifyOtpButton.isEnabled = false
@@ -210,6 +307,8 @@ class LoginActivity : AppCompatActivity() {
         sendOtpButton.isEnabled = false
         verifyOtpButton.isEnabled = false
         resendOtpButton.isEnabled = false
+        mobileInput.isEnabled = false
+        otpInput.isEnabled = false
     }
 
     private fun hideLoading() {
@@ -224,17 +323,47 @@ class LoginActivity : AppCompatActivity() {
 
     private fun showError(error: ApiError) {
         when (error.code) {
-            ApiErrorCode.NO_INTERNET, ApiErrorCode.TIMEOUT, ApiErrorCode.SERVER_UNREACHABLE, ApiErrorCode.SERVER_ERROR -> {
-                showErrorDialog(getString(R.string.error_network), error.message) {
-                    if (isOtpSent) verifyOtp(otpInput.text?.toString() ?: "")
-                    else requestOtp(currentMobile)
+            ApiErrorCode.NO_INTERNET -> {
+                showErrorDialog(
+                    getString(R.string.error_no_internet_title),
+                    getString(R.string.error_no_internet_message)
+                ) { retryCurrentOperation() }
+            }
+            ApiErrorCode.TIMEOUT, ApiErrorCode.SERVER_UNREACHABLE -> {
+                showErrorDialog(
+                    getString(R.string.error_timeout_title),
+                    getString(R.string.error_timeout_message)
+                ) { retryCurrentOperation() }
+            }
+            ApiErrorCode.SERVER_ERROR -> {
+                showErrorDialog(
+                    getString(R.string.error_server_title),
+                    getString(R.string.error_server_message)
+                ) { retryCurrentOperation() }
+            }
+            ApiErrorCode.RATE_LIMITED -> {
+                showErrorDialog(
+                    getString(R.string.error_rate_limited_title),
+                    error.message,
+                    null
+                )
+            }
+            else -> {
+                if (!isOtpSent) {
+                    mobileInputLayout.error = error.message
+                } else {
+                    otpInputLayout.error = error.message
                 }
             }
-            ApiErrorCode.RATE_LIMITED -> showErrorDialog(getString(R.string.error_too_many_attempts), error.message, null)
-            else -> {
-                if (!isOtpSent) mobileInputLayout.error = error.message
-                else otpInputLayout.error = error.message
-            }
+        }
+    }
+
+    private fun retryCurrentOperation() {
+        if (!isOtpSent) {
+            requestOtp(currentMobile)
+        } else {
+            val otp = otpInput.text?.toString() ?: ""
+            if (otp.length == 6) verifyOtp(otp)
         }
     }
 
@@ -245,9 +374,26 @@ class LoginActivity : AppCompatActivity() {
             setCancelable(true)
             if (retryAction != null) {
                 setPositiveButton(R.string.btn_retry) { _, _ -> retryAction() }
-                setNegativeButton(R.string.btn_cancel, null)
+                setNegativeButton(R.string.btn_cancel) { dialog, _ -> 
+                    dialog.dismiss()
+                    // Re-enable inputs on cancel
+                    if (!isOtpSent) {
+                        mobileInput.isEnabled = true
+                        sendOtpButton.isEnabled = isValidMobile(mobileInput.text?.toString() ?: "")
+                    } else {
+                        otpInput.isEnabled = true
+                        verifyOtpButton.isEnabled = (otpInput.text?.length ?: 0) == 6
+                        resendOtpButton.isEnabled = true
+                    }
+                }
             } else {
-                setPositiveButton(android.R.string.ok, null)
+                setPositiveButton(android.R.string.ok) { dialog, _ ->
+                    dialog.dismiss()
+                    if (!isOtpSent) {
+                        mobileInput.isEnabled = true
+                        sendOtpButton.isEnabled = isValidMobile(mobileInput.text?.toString() ?: "")
+                    }
+                }
             }
         }.show()
     }
@@ -261,7 +407,7 @@ class LoginActivity : AppCompatActivity() {
             }
             override fun onFinish() {
                 timerText.text = ""
-                resendOtpButton.isEnabled = true
+                resendOtpButton.isEnabled = !isRequestInProgress
             }
         }.start()
     }

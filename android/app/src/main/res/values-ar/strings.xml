@@ -4,7 +4,7 @@
     <string name="app_name">لوحة مفاتيح هيلث باي</string>
     <string name="app_description">لوحة مفاتيح آمنة لمحفظة هيلث باي</string>
     
-    <!-- Keyboard Labels (Bug #3 Fix) -->
+    <!-- Keyboard Labels -->
     <string name="keyboard_label_en">هيلث باي (English)</string>
     <string name="keyboard_label_ar">هيلث باي (العربية)</string>
     
@@ -31,13 +31,22 @@
     <string name="status_otp_sent">تم إرسال رمز التحقق بنجاح</string>
     <string name="status_login_success">تم تسجيل الدخول بنجاح!</string>
     
-    <!-- Error Messages -->
+    <!-- Error Messages - Basic -->
     <string name="error_invalid_mobile">يرجى إدخال رقم هاتف مصري صالح</string>
     <string name="error_invalid_otp">رمز التحقق غير صحيح. يرجى المحاولة مرة أخرى.</string>
     <string name="error_otp_expired">انتهت صلاحية رمز التحقق. يرجى طلب رمز جديد.</string>
     <string name="error_network">خطأ في الشبكة. يرجى التحقق من الاتصال.</string>
     <string name="error_server">خطأ في الخادم. يرجى المحاولة لاحقاً.</string>
     <string name="error_too_many_attempts">محاولات كثيرة. يرجى الانتظار قبل المحاولة مرة أخرى.</string>
+    
+    <!-- Error Messages - Detailed (v1.2.2) -->
+    <string name="error_timeout_title">انتهت مهلة الاتصال</string>
+    <string name="error_timeout_message">الخادم يستغرق وقتاً طويلاً للاستجابة. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.</string>
+    <string name="error_no_internet_title">لا يوجد اتصال بالإنترنت</string>
+    <string name="error_no_internet_message">يرجى التحقق من إعدادات الشبكة والمحاولة مرة أخرى.</string>
+    <string name="error_server_title">خطأ في الخادم</string>
+    <string name="error_server_message">نواجه صعوبة في الاتصال بخوادمنا. يرجى المحاولة مرة أخرى بعد قليل.</string>
+    <string name="error_rate_limited_title">طلبات كثيرة جداً</string>
     
     <!-- Timer -->
     <string name="timer_resend_otp">إعادة إرسال الرمز خلال %1$d ثانية</string>
