@@ -1,0 +1,436 @@
+{
+  "info": {
+    "name": "HealthPay Wallet API - Keyboard Integration",
+    "_postman_id": "healthpay-keyboard-collection",
+    "description": "API collection for HealthPay WhatsApp Keyboard integration.\n\nBase URL: https://portal.beta.healthpay.tech/api\n\nCredentials:\n- Username: beta.account@healthpay.tech\n- Password: BetaAcc@HealthPay2024",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://portal.beta.healthpay.tech/api"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "refresh_token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', jsonData.accessToken);",
+                  "    pm.collectionVariables.set('refresh_token', jsonData.refreshToken);",
+                  "    pm.test('Login successful', function() {",
+                  "        pm.expect(jsonData.accessToken).to.not.be.empty;",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"beta.account@healthpay.tech\",\n    \"password\": \"BetaAcc@HealthPay2024\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Authenticate user and get access tokens"
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', jsonData.accessToken);",
+                  "    pm.collectionVariables.set('refresh_token', jsonData.refreshToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"refreshToken\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Refresh access token using refresh token"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Invalidate current session"
+          }
+        },
+        {
+          "name": "Get User Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/profile",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "profile"]
+            },
+            "description": "Get current user profile information"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wallet",
+      "item": [
+        {
+          "name": "Get Balance",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Balance retrieved successfully', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('available');",
+                  "    pm.expect(jsonData).to.have.property('pending');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/wallet/balance",
+              "host": ["{{base_url}}"],
+              "path": ["wallet", "balance"]
+            },
+            "description": "Get current wallet balance"
+          }
+        },
+        {
+          "name": "Send Payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Payment sent successfully', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('id');",
+                  "    pm.expect(jsonData).to.have.property('referenceNumber');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"amount\": 100.00,\n    \"recipientPhone\": \"+201234567890\",\n    \"description\": \"Payment via WhatsApp Keyboard\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/wallet/send",
+              "host": ["{{base_url}}"],
+              "path": ["wallet", "send"]
+            },
+            "description": "Send payment to another user"
+          }
+        },
+        {
+          "name": "Request Payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Payment request created', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('link');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"amount\": 50.00,\n    \"description\": \"Payment request for dinner\",\n    \"expiresIn\": 24\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/wallet/request",
+              "host": ["{{base_url}}"],
+              "path": ["wallet", "request"]
+            },
+            "description": "Create a payment request link"
+          }
+        },
+        {
+          "name": "Get Transactions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Transactions retrieved', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('transactions');",
+                  "    pm.expect(jsonData.transactions).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/wallet/transactions?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["wallet", "transactions"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Get transaction history with pagination"
+          }
+        },
+        {
+          "name": "Get Transaction Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/wallet/transactions/:transactionId",
+              "host": ["{{base_url}}"],
+              "path": ["wallet", "transactions", ":transactionId"],
+              "variable": [
+                {
+                  "key": "transactionId",
+                  "value": "txn_123456"
+                }
+              ]
+            },
+            "description": "Get details of a specific transaction"
+          }
+        }
+      ]
+    },
+    {
+      "name": "QR Payments",
+      "item": [
+        {
+          "name": "Generate Payment QR",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('QR generated', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('qrData');",
+                  "    pm.expect(jsonData).to.have.property('qrImage');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"amount\": 100.00,\n    \"description\": \"Coffee payment\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/qr/generate",
+              "host": ["{{base_url}}"],
+              "path": ["qr", "generate"]
+            },
+            "description": "Generate a QR code for receiving payment"
+          }
+        },
+        {
+          "name": "Generate Receive QR (No Amount)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{base_url}}/qr/generate",
+              "host": ["{{base_url}}"],
+              "path": ["qr", "generate"]
+            },
+            "description": "Generate a generic QR code for receiving any amount"
+          }
+        },
+        {
+          "name": "Process QR Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"qrData\": \"healthpay://pay?id=qr_abc123&amount=100\",\n    \"pin\": \"encrypted_pin_here\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/qr/process",
+              "host": ["{{base_url}}"],
+              "path": ["qr", "process"]
+            },
+            "description": "Process a scanned QR code payment"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Contacts",
+      "item": [
+        {
+          "name": "Get Saved Recipients",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/contacts/recipients",
+              "host": ["{{base_url}}"],
+              "path": ["contacts", "recipients"]
+            },
+            "description": "Get list of saved payment recipients"
+          }
+        },
+        {
+          "name": "Save Recipient",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"John Doe\",\n    \"phone\": \"+201234567890\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/contacts/recipients",
+              "host": ["{{base_url}}"],
+              "path": ["contacts", "recipients"]
+            },
+            "description": "Save a new payment recipient"
+          }
+        }
+      ]
+    }
+  ]
+}

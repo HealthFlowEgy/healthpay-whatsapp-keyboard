@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="accent_color">#00BCD4</color>
+    <color name="auth_prompt_background">#FFF8E1</color>
+    <color name="auth_prompt_background_dark">#3E2723</color>
+    <color name="balance_card_background">#FFFFFF</color>
+    <color name="balance_card_background_dark">#2D2D2D</color>
+    <color name="button_disabled">#BDBDBD</color>
+    <color name="button_primary">#1E88E5</color>
+    <color name="button_primary_pressed">#1565C0</color>
+    <color name="button_secondary">#FFFFFF</color>
+    <color name="divider">#E0E0E0</color>
+    <color name="divider_dark">#424242</color>
+    <color name="error_color">#E53935</color>
+    <color name="healthpay_blue">#2196F3</color>
+    <color name="healthpay_gradient_end">#00BCD4</color>
+    <color name="healthpay_gradient_start">#1E88E5</color>
+    <color name="healthpay_green">#4CAF50</color>
+    <color name="info_color">#2196F3</color>
+    <color name="input_background">#FFFFFF</color>
+    <color name="input_background_dark">#2D2D2D</color>
+    <color name="input_border">#E0E0E0</color>
+    <color name="input_border_focused">#1E88E5</color>
+    <color name="key_background">#FFFFFF</color>
+    <color name="key_background_dark">#3D3D3D</color>
+    <color name="key_background_pressed">#E0E0E0</color>
+    <color name="key_special_background">#B0BEC5</color>
+    <color name="key_special_background_dark">#546E7A</color>
+    <color name="key_special_text">#37474F</color>
+    <color name="key_special_text_dark">#B0BEC5</color>
+    <color name="key_text">#212121</color>
+    <color name="key_text_dark">#FFFFFF</color>
+    <color name="keyboard_background">#E8E8E8</color>
+    <color name="keyboard_background_dark">#1A1A1A</color>
+    <color name="primary">#1E88E5</color>
+    <color name="primary_dark">#1565C0</color>
+    <color name="primary_light">#64B5F6</color>
+    <color name="ripple_color">#1F000000</color>
+    <color name="shadow">#1F000000</color>
+    <color name="success_color">#4CAF50</color>
+    <color name="text_disabled">#BDBDBD</color>
+    <color name="text_hint">#9E9E9E</color>
+    <color name="text_primary">#212121</color>
+    <color name="text_primary_dark">#FFFFFF</color>
+    <color name="text_secondary">#757575</color>
+    <color name="text_secondary_dark">#B0BEC5</color>
+    <color name="toolbar_background">#F5F5F5</color>
+    <color name="toolbar_background_dark">#2D2D2D</color>
+    <color name="transaction_pending">#FFA726</color>
+    <color name="transaction_received">#4CAF50</color>
+    <color name="transaction_sent">#E53935</color>
+    <color name="warning_color">#FFA726</color>
+    <item name="amount" type="id"/>
+    <item name="avatar" type="id"/>
+    <item name="date" type="id"/>
+    <item name="name" type="id"/>
+    <item name="status" type="id"/>
+    <string name="about">About</string>
+    <string name="amount">Amount</string>
+    <string name="amount_hint">0.00</string>
+    <string name="app_name">HealthPay Keyboard</string>
+    <string name="arabic">العربية</string>
+    <string name="auto_capitalize">Auto Capitalize</string>
+    <string name="available_balance">Available</string>
+    <string name="balance">Balance</string>
+    <string name="balance_updated">Balance checked at %1$s</string>
+    <string name="biometric_auth">Biometric Authentication</string>
+    <string name="biometric_failed">Authentication failed</string>
+    <string name="biometric_not_available">Biometric authentication not available</string>
+    <string name="biometric_pay_subtitle">Confirm your identity to send payment</string>
+    <string name="biometric_pay_title">Authenticate to Pay</string>
+    <string name="biometric_prompt_negative">Cancel</string>
+    <string name="biometric_prompt_subtitle">Confirm your identity for HealthPay</string>
+    <string name="biometric_prompt_title">Authenticate</string>
+    <string name="biometric_view_subtitle">Authenticate to see your balance</string>
+    <string name="biometric_view_title">View Wallet</string>
+    <string name="cancel">Cancel</string>
+    <string name="completed">Completed</string>
+    <string name="confirm">Confirm</string>
+    <string name="confirm_payment">Confirm Payment</string>
+    <string name="content_desc_balance">Wallet balance</string>
+    <string name="content_desc_close_button">Close button</string>
+    <string name="content_desc_delete_key">Delete key</string>
+    <string name="content_desc_enter_key">Enter key</string>
+    <string name="content_desc_language_switch">Switch language</string>
+    <string name="content_desc_pay_button">Pay button</string>
+    <string name="content_desc_qr_button">QR code button</string>
+    <string name="content_desc_request_button">Request payment button</string>
+    <string name="content_desc_settings_button">Settings button</string>
+    <string name="content_desc_shift_key">Shift key</string>
+    <string name="content_desc_space_key">Space key</string>
+    <string name="default_language">Default Language</string>
+    <string name="egp">EGP</string>
+    <string name="enable_keyboard">Enable Keyboard</string>
+    <string name="english">English</string>
+    <string name="error_generic">Something went wrong. Please try again.</string>
+    <string name="error_network">Network connection error</string>
+    <string name="error_server">Server error. Please try again later.</string>
+    <string name="error_timeout">Request timed out</string>
+    <string name="error_unauthorized">Session expired. Please login again.</string>
+    <string name="failed">Failed</string>
+    <string name="forgot_password">Forgot Password?</string>
+    <string name="generate_qr">Generate QR</string>
+    <string name="get_started">Get Started</string>
+    <string name="haptic_feedback">Haptic Feedback</string>
+    <string name="history">History</string>
+    <string name="invalid_amount">Please enter a valid amount</string>
+    <string name="invalid_credentials">Invalid username or password</string>
+    <string name="invalid_phone">Please enter a valid phone number</string>
+    <string name="keyboard_description">Pay directly from WhatsApp with HealthPay wallet</string>
+    <string name="keyboard_name">HealthPay</string>
+    <string name="keyboard_settings">Keyboard Settings</string>
+    <string name="login">Login</string>
+    <string name="login_failed">Login failed. Please try again.</string>
+    <string name="login_required">Login to use HealthPay payments</string>
+    <string name="logout">Logout</string>
+    <string name="my_qr">My QR</string>
+    <string name="no_transactions">No transactions yet</string>
+    <string name="note_hint">Optional note</string>
+    <string name="note_optional">Note (optional)</string>
+    <string name="password">Password</string>
+    <string name="pay">Pay</string>
+    <string name="payment_failed">Payment failed</string>
+    <string name="payment_request_message">💰 *Payment Request*\n━━━━━━━━━━━━━━━━\nAmount: EGP %1$.2f\n\n👉 Tap to pay: %2$s\n━━━━━━━━━━━━━━━━\nPowered by HealthPay</string>
+    <string name="payment_sent_message">💳 *HealthPay Payment Sent*\n━━━━━━━━━━━━━━━━\nAmount: EGP %1$.2f\nTo: %2$s\nRef: %3$s\nTime: %4$s\n━━━━━━━━━━━━━━━━\n✅ Powered by HealthPay Wallet</string>
+    <string name="payment_settings">Payment Settings</string>
+    <string name="payment_successful">Payment sent successfully!</string>
+    <string name="pending">Pending</string>
+    <string name="pending_balance">Pending</string>
+    <string name="phone_hint">+20 123 456 7890</string>
+    <string name="privacy_policy">Privacy Policy</string>
+    <string name="qr">QR</string>
+    <string name="qr_payment">QR Payment</string>
+    <string name="quick_amount_100">100 EGP</string>
+    <string name="quick_amount_50">50 EGP</string>
+    <string name="quick_amount_500">500 EGP</string>
+    <string name="quick_pay">Quick Pay</string>
+    <string name="received">Received</string>
+    <string name="recent_recipients">Recent</string>
+    <string name="recent_transactions">Recent Transactions</string>
+    <string name="recipient_phone">Recipient Phone</string>
+    <string name="refresh_balance">Refresh balance</string>
+    <string name="request">Request</string>
+    <string name="request_money">Request Money</string>
+    <string name="request_payment">Request Payment</string>
+    <string name="scan_qr">Scan QR</string>
+    <string name="scan_to_pay">Scan to pay</string>
+    <string name="security_settings">Security</string>
+    <string name="select_keyboard">Select Keyboard</string>
+    <string name="send">Send</string>
+    <string name="send_money">Send Money</string>
+    <string name="send_payment">Send Payment</string>
+    <string name="sent">Sent</string>
+    <string name="session_timeout">Session Timeout</string>
+    <string name="settings">Settings</string>
+    <string name="setup_step1">1. Enable Keyboard</string>
+    <string name="setup_step1_desc">Go to Settings → System → Languages → On-screen keyboard</string>
+    <string name="setup_step2">2. Select HealthPay</string>
+    <string name="setup_step2_desc">Enable HealthPay Keyboard in the list</string>
+    <string name="setup_step3">3. Login</string>
+    <string name="setup_step3_desc">Sign in with your HealthPay account</string>
+    <string name="setup_title">Setup HealthPay Keyboard</string>
+    <string name="share_link">Share Link</string>
+    <string name="sound_feedback">Sound Feedback</string>
+    <string name="terms_of_service">Terms of Service</string>
+    <string name="topup">Top Up</string>
+    <string name="transaction_history">Transaction History</string>
+    <string name="username">Username</string>
+    <string name="version">Version</string>
+    <string name="wallet_balance">Wallet Balance</string>
+    <style name="TextInputLayoutStyle" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="boxStrokeColor">@color/primary</item>
+        <item name="boxStrokeWidth">2dp</item>
+        <item name="hintTextColor">@color/primary</item>
+        <item name="android:textColorHint">@color/text_secondary</item>
+    </style>
+    <style name="Theme.HealthPayKeyboard" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+        
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryVariant">@color/primary_dark</item>
+        <item name="colorOnPrimary">@android:color/white</item>
+        
+        <item name="colorSecondary">@color/secondary</item>
+        <item name="colorSecondaryVariant">@color/secondary_dark</item>
+        <item name="colorOnSecondary">@android:color/black</item>
+        
+        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        
+    </style>
+    <style name="Theme.HealthPayKeyboard.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+    <style name="Theme.HealthPayKeyboard.Transparent" parent="Theme.MaterialComponents.DayNight.Dialog">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:backgroundDimEnabled">true</item>
+    </style>
+</resources>

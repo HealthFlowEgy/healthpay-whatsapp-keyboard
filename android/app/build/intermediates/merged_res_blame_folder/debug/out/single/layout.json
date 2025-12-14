@@ -1,0 +1,10 @@
+[
+    {
+        "merged": "tech.healthpay.keyboard.app-mergeDebugResources-49:/layout/keyboard_layout.xml",
+        "source": "tech.healthpay.keyboard.app-main-52:/layout/keyboard_layout.xml"
+    },
+    {
+        "merged": "tech.healthpay.keyboard.app-mergeDebugResources-49:/layout/dialog_payment.xml",
+        "source": "tech.healthpay.keyboard.app-main-52:/layout/dialog_payment.xml"
+    }
+]

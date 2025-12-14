@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="about">حول</string>
+    <string name="amount">المبلغ</string>
+    <string name="app_name">لوحة مفاتيح هيلث باي</string>
+    <string name="arabic">العربية</string>
+    <string name="auto_capitalize">الأحرف الكبيرة تلقائياً</string>
+    <string name="available_balance">المتاح</string>
+    <string name="balance">الرصيد</string>
+    <string name="balance_updated">تم تحديث الرصيد في %1$s</string>
+    <string name="biometric_auth">التحقق البيومتري</string>
+    <string name="biometric_failed">فشل التحقق</string>
+    <string name="biometric_not_available">التحقق البيومتري غير متاح</string>
+    <string name="biometric_pay_subtitle">تأكيد هويتك لإرسال الدفعة</string>
+    <string name="biometric_pay_title">التحقق للدفع</string>
+    <string name="biometric_prompt_negative">إلغاء</string>
+    <string name="biometric_prompt_subtitle">تأكيد هويتك لـ هيلث باي</string>
+    <string name="biometric_prompt_title">التحقق</string>
+    <string name="biometric_view_subtitle">التحقق لرؤية رصيدك</string>
+    <string name="biometric_view_title">عرض المحفظة</string>
+    <string name="cancel">إلغاء</string>
+    <string name="completed">مكتمل</string>
+    <string name="confirm">تأكيد</string>
+    <string name="default_language">اللغة الافتراضية</string>
+    <string name="egp">جنيه</string>
+    <string name="enable_keyboard">تفعيل لوحة المفاتيح</string>
+    <string name="english">English</string>
+    <string name="error_generic">حدث خطأ ما. حاول مرة أخرى.</string>
+    <string name="error_network">خطأ في الاتصال بالشبكة</string>
+    <string name="error_server">خطأ في الخادم. حاول مرة أخرى لاحقاً.</string>
+    <string name="error_timeout">انتهت مهلة الطلب</string>
+    <string name="error_unauthorized">انتهت الجلسة. سجل دخولك مرة أخرى.</string>
+    <string name="failed">فشل</string>
+    <string name="forgot_password">نسيت كلمة المرور؟</string>
+    <string name="generate_qr">إنشاء QR</string>
+    <string name="get_started">ابدأ الآن</string>
+    <string name="haptic_feedback">الاهتزاز عند اللمس</string>
+    <string name="history">السجل</string>
+    <string name="invalid_amount">الرجاء إدخال مبلغ صحيح</string>
+    <string name="invalid_credentials">اسم المستخدم أو كلمة المرور غير صحيحة</string>
+    <string name="invalid_phone">الرجاء إدخال رقم هاتف صحيح</string>
+    <string name="keyboard_description">ادفع مباشرة من واتساب مع محفظة هيلث باي</string>
+    <string name="keyboard_name">هيلث باي</string>
+    <string name="keyboard_settings">إعدادات لوحة المفاتيح</string>
+    <string name="login">تسجيل الدخول</string>
+    <string name="login_failed">فشل تسجيل الدخول. حاول مرة أخرى.</string>
+    <string name="login_required">سجل دخولك لاستخدام مدفوعات هيلث باي</string>
+    <string name="logout">تسجيل الخروج</string>
+    <string name="my_qr">QR الخاص بي</string>
+    <string name="no_transactions">لا توجد معاملات بعد</string>
+    <string name="note_optional">ملاحظة (اختياري)</string>
+    <string name="password">كلمة المرور</string>
+    <string name="pay">دفع</string>
+    <string name="payment_failed">فشلت الدفعة</string>
+    <string name="payment_request_message">💰 *طلب دفعة*\n━━━━━━━━━━━━━━━━\nالمبلغ: %1$.2f جنيه\n\n👉 اضغط للدفع: %2$s\n━━━━━━━━━━━━━━━━\nمدعوم من هيلث باي</string>
+    <string name="payment_sent_message">💳 *تم إرسال دفعة هيلث باي*\n━━━━━━━━━━━━━━━━\nالمبلغ: %1$.2f جنيه\nإلى: %2$s\nالمرجع: %3$s\nالوقت: %4$s\n━━━━━━━━━━━━━━━━\n✅ مدعوم من محفظة هيلث باي</string>
+    <string name="payment_settings">إعدادات الدفع</string>
+    <string name="payment_successful">تم إرسال الدفعة بنجاح!</string>
+    <string name="pending">قيد الانتظار</string>
+    <string name="pending_balance">قيد الانتظار</string>
+    <string name="privacy_policy">سياسة الخصوصية</string>
+    <string name="qr">QR</string>
+    <string name="qr_payment">دفع بـ QR</string>
+    <string name="quick_pay">دفع سريع</string>
+    <string name="received">مستلم</string>
+    <string name="recent_recipients">الأخيرة</string>
+    <string name="recent_transactions">المعاملات الأخيرة</string>
+    <string name="recipient_phone">رقم هاتف المستلم</string>
+    <string name="request">طلب</string>
+    <string name="request_payment">طلب دفعة</string>
+    <string name="scan_qr">مسح QR</string>
+    <string name="scan_to_pay">امسح للدفع</string>
+    <string name="security_settings">الأمان</string>
+    <string name="select_keyboard">اختيار لوحة المفاتيح</string>
+    <string name="send">إرسال</string>
+    <string name="send_payment">إرسال دفعة</string>
+    <string name="sent">مرسل</string>
+    <string name="session_timeout">مهلة الجلسة</string>
+    <string name="settings">الإعدادات</string>
+    <string name="setup_step1">١. تفعيل لوحة المفاتيح</string>
+    <string name="setup_step1_desc">اذهب إلى الإعدادات ← النظام ← اللغات ← لوحة المفاتيح على الشاشة</string>
+    <string name="setup_step2">٢. اختر هيلث باي</string>
+    <string name="setup_step2_desc">فعّل لوحة مفاتيح هيلث باي من القائمة</string>
+    <string name="setup_step3">٣. تسجيل الدخول</string>
+    <string name="setup_step3_desc">سجل دخولك بحساب هيلث باي الخاص بك</string>
+    <string name="setup_title">إعداد لوحة مفاتيح هيلث باي</string>
+    <string name="sound_feedback">صوت اللمس</string>
+    <string name="terms_of_service">شروط الخدمة</string>
+    <string name="transaction_history">سجل المعاملات</string>
+    <string name="username">اسم المستخدم</string>
+    <string name="version">الإصدار</string>
+    <string name="wallet_balance">رصيد المحفظة</string>
+</resources>
